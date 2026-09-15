@@ -1,0 +1,16 @@
+# IntelliJ
+.idea/
+*.iml
+
+# Maven
+target/
+
+# Environment
+.env
+
+# Logs
+logs/
+
+# Node
+node_modules/
+dist/
