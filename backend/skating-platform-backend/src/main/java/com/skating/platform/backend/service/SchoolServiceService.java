@@ -1,6 +1,9 @@
 package com.skating.platform.backend.service;
 
+import com.skating.platform.backend.dto.response.SchoolServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
+import com.skating.platform.backend.exception.ResourceNotFoundException;
+import com.skating.platform.backend.mapper.SchoolServiceMapper;
 import com.skating.platform.backend.repository.SchoolServiceRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,38 +14,52 @@ import java.util.List;
 public class SchoolServiceService {
 
     private final SchoolServiceRepository repository;
+    private final SchoolServiceMapper mapper;
 
-    public SchoolServiceService(SchoolServiceRepository repository) {
+    public SchoolServiceService(SchoolServiceRepository repository, SchoolServiceMapper mapper) {
         this.repository = repository;
+        this.mapper = mapper;
     }
 
-    public List<SchoolService> getAllServices(){
-        return repository.findAll();
+    public List<SchoolServiceResponse> getAllServices(){
+
+        return repository.findAll()
+                .stream()
+                .map(mapper::toResponse) // (mapper -> mapper.toResponse(service))
+                .toList();
     }
 
-    public SchoolService getServiceById(Long id){
+    public SchoolServiceResponse getServiceById(Long id){
+        SchoolService service;
+        service = getEntityById(id);
+        return mapper.toResponse(service);
+    }
+
+    public SchoolServiceResponse createService(SchoolService service){
+        SchoolService saved = repository.save(service);
+        return mapper.toResponse(saved);
+    }
+
+    private SchoolService getEntityById(Long id){
         return repository.findById(id)
                 .orElseThrow(() ->
-        new RuntimeException("Service not found")
+                        new ResourceNotFoundException("Service not found")
                 );
     }
 
-    public SchoolService createService(SchoolService service){
-        return repository.save(service);
-    }
-
-    public SchoolService updateService(Long id, SchoolService updatedService){
-        SchoolService existing = getServiceById(id);
+    public SchoolServiceResponse updateService(Long id, SchoolService updatedService){
+        SchoolService existing = getEntityById(id);
         existing.setName(updatedService.getName());
         existing.setActive(updatedService.getActive());
         existing.setType(updatedService.getType());
         existing.setPrice(updatedService.getPrice());
         existing.setDescription(updatedService.getDescription());
         existing.setUpdatedAt(OffsetDateTime.now());
-        return repository.save(existing);
+        SchoolService saved = repository.save(existing);
+        return mapper.toResponse(saved);
     }
     public void deleteService(Long id){
-        SchoolService service = getServiceById(id);
+        SchoolService service = getEntityById(id);
         repository.delete(service);
     }
 }
