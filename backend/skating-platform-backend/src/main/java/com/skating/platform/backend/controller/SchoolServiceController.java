@@ -5,6 +5,7 @@ import com.skating.platform.backend.dto.request.UpdateSchoolServiceRequest;
 import com.skating.platform.backend.dto.response.SchoolServiceResponse;
 
 import com.skating.platform.backend.service.SchoolServiceService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,7 @@ public class SchoolServiceController {
 
     @PostMapping
     public SchoolServiceResponse createService(
-            @RequestBody SchoolServiceRequest request
+           @Valid @RequestBody SchoolServiceRequest request
     ){
         return schoolServiceService.createService(request);
     }
@@ -37,7 +38,7 @@ public class SchoolServiceController {
     }
 
     @PutMapping("/{serviceId}")
-    public SchoolServiceResponse updateService(@PathVariable Long serviceId, @RequestBody UpdateSchoolServiceRequest request){
+    public SchoolServiceResponse updateService(@PathVariable Long serviceId, @Valid @RequestBody UpdateSchoolServiceRequest request){
         return schoolServiceService.updateService(serviceId, request);
     }
 
