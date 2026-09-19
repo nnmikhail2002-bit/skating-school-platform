@@ -1,5 +1,4 @@
 package com.skating.platform.backend.dto.response;
-import java.math.BigDecimal;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,11 +9,11 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SchoolServiceResponse {
+public class TrainerResponse {
     private Long id;
-    private String name;
-    private String description;
-    private BigDecimal price;
-    private String type;
+    private String firstName;
+    private String lastName;
+    private String phone;
+    private Integer experienceYears;
     private Boolean active;
 }
