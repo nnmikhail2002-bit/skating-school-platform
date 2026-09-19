@@ -1,0 +1,2 @@
+ALTER TABLE school_services
+    ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE;

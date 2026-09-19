@@ -1,10 +1,12 @@
 package com.skating.platform.backend.service;
 
+import com.skating.platform.backend.dto.request.SchoolServiceRequest;
 import com.skating.platform.backend.dto.response.SchoolServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.SchoolServiceMapper;
 import com.skating.platform.backend.repository.SchoolServiceRepository;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -35,7 +37,8 @@ public class SchoolServiceService {
         return mapper.toResponse(service);
     }
 
-    public SchoolServiceResponse createService(SchoolService service){
+    public SchoolServiceResponse createService(SchoolServiceRequest request){
+        SchoolService service = mapper.toEntity(request);
         SchoolService saved = repository.save(service);
         return mapper.toResponse(saved);
     }
