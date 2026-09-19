@@ -1,6 +1,7 @@
 package com.skating.platform.backend.service;
 
 import com.skating.platform.backend.dto.request.SchoolServiceRequest;
+import com.skating.platform.backend.dto.request.UpdateSchoolServiceRequest;
 import com.skating.platform.backend.dto.response.SchoolServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
@@ -50,7 +51,7 @@ public class SchoolServiceService {
                 );
     }
 
-    public SchoolServiceResponse updateService(Long id, SchoolServiceRequest updatedService){
+    public SchoolServiceResponse updateService(Long id, UpdateSchoolServiceRequest updatedService){
         SchoolService existing = getEntityById(id);
         existing.setName(updatedService.getName());
         existing.setType(updatedService.getType());

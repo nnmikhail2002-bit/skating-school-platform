@@ -1,10 +1,9 @@
 package com.skating.platform.backend.controller;
 
 import com.skating.platform.backend.dto.request.SchoolServiceRequest;
+import com.skating.platform.backend.dto.request.UpdateSchoolServiceRequest;
 import com.skating.platform.backend.dto.response.SchoolServiceResponse;
 
-import com.skating.platform.backend.entity.SchoolService;
-import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.service.SchoolServiceService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -38,8 +37,8 @@ public class SchoolServiceController {
     }
 
     @PutMapping("/{serviceId}")
-    public SchoolServiceResponse updateService(@PathVariable Long serviceId, @RequestBody SchoolServiceRequest request){
-        return schoolServiceService.updateService(serviceId,  request);
+    public SchoolServiceResponse updateService(@PathVariable Long serviceId, @RequestBody UpdateSchoolServiceRequest request){
+        return schoolServiceService.updateService(serviceId, request);
     }
 
     @DeleteMapping("/{serviceId}")
