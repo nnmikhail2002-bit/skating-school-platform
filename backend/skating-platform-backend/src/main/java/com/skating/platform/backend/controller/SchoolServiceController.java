@@ -2,7 +2,11 @@ package com.skating.platform.backend.controller;
 
 import com.skating.platform.backend.dto.request.SchoolServiceRequest;
 import com.skating.platform.backend.dto.response.SchoolServiceResponse;
+
+import com.skating.platform.backend.entity.SchoolService;
+import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.service.SchoolServiceService;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +19,7 @@ public class SchoolServiceController {
     public SchoolServiceController(SchoolServiceService schoolServiceService){
         this.schoolServiceService = schoolServiceService;
     }
+
     @GetMapping
     public List<SchoolServiceResponse> getAllServices(){
         return schoolServiceService.getAllServices();
@@ -30,5 +35,16 @@ public class SchoolServiceController {
     @GetMapping("/{serviceId}")
     public SchoolServiceResponse getServiceById(@PathVariable Long serviceId){
         return schoolServiceService.getServiceById(serviceId);
+    }
+
+    @PutMapping("/{serviceId}")
+    public SchoolServiceResponse updateService(@PathVariable Long serviceId, @RequestBody SchoolServiceRequest request){
+        return schoolServiceService.updateService(serviceId,  request);
+    }
+
+    @DeleteMapping("/{serviceId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteService(@PathVariable Long serviceId){
+        schoolServiceService.deleteService(serviceId);
     }
 }

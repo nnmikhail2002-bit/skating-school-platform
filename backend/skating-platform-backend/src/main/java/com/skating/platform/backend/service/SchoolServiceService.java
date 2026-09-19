@@ -50,10 +50,9 @@ public class SchoolServiceService {
                 );
     }
 
-    public SchoolServiceResponse updateService(Long id, SchoolService updatedService){
+    public SchoolServiceResponse updateService(Long id, SchoolServiceRequest updatedService){
         SchoolService existing = getEntityById(id);
         existing.setName(updatedService.getName());
-        existing.setActive(updatedService.getActive());
         existing.setType(updatedService.getType());
         existing.setPrice(updatedService.getPrice());
         existing.setDescription(updatedService.getDescription());
