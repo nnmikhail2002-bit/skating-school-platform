@@ -47,4 +47,7 @@ public class SchoolServiceController {
     public void deleteService(@PathVariable Long serviceId){
         schoolServiceService.deleteService(serviceId);
     }
+
+
+
 }

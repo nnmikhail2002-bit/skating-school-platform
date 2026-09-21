@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "school_services")
@@ -107,5 +109,12 @@ public class SchoolService {
 
     public void setUpdatedAt(OffsetDateTime updatedAt){
         this.updatedAt =updatedAt;
+    }
+
+    @ManyToMany(mappedBy = "services")
+    private Set<Trainer> trainers = new HashSet<>();
+
+    public Set<Trainer> getTrainers() {
+        return trainers;
     }
 }

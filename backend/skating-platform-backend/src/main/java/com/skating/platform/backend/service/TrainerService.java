@@ -3,21 +3,32 @@ package com.skating.platform.backend.service;
 import com.skating.platform.backend.dto.request.TrainerRequest;
 import com.skating.platform.backend.dto.request.UpdateTrainerRequest;
 import com.skating.platform.backend.dto.response.TrainerResponse;
+import com.skating.platform.backend.dto.response.TrainerServiceResponse;
+import com.skating.platform.backend.entity.SchoolService;
 import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.TrainerMapper;
+
+import com.skating.platform.backend.mapper.TrainerServiceMapper;
 import com.skating.platform.backend.repository.TrainerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
+
 
 @Service
 public class TrainerService {
+    private final TrainerServiceMapper trainerServiceMapper;
     private final TrainerRepository repository;
     private final TrainerMapper mapper;
+    private final SchoolServiceService schoolServiceService;
 
-    public TrainerService(TrainerRepository repository, TrainerMapper mapper){
+    public TrainerService(TrainerRepository repository, TrainerMapper mapper, SchoolServiceService schoolServiceService, TrainerServiceMapper trainerServiceMapper){
         this.repository = repository;
         this.mapper = mapper;
+        this.schoolServiceService = schoolServiceService;
+        this.trainerServiceMapper = trainerServiceMapper;
     }
 
     public List<TrainerResponse> getAllTrainers(){
@@ -33,7 +44,7 @@ public class TrainerService {
         return mapper.toResponse(saved);
     }
 
-    public Trainer getEntityById(Long id) {
+    Trainer getEntityById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Trainer not found")
@@ -56,8 +67,49 @@ public class TrainerService {
         return mapper.toResponse(saved);
     }
 
-    public void deleteTrainer(Long id){
-        getEntityById(id);
-        repository.deleteById(id);
+    @Transactional
+    public void deleteTrainer(Long trainerId){
+        Trainer trainer = getEntityById(trainerId);
+        trainer.getServices().clear();
+        repository.delete(trainer);
+
+    }
+
+    @Transactional
+    public void addServiceToTrainer(Long trainerId, Long serviceId){
+        Trainer trainer = getEntityById(trainerId);
+        SchoolService service = schoolServiceService.getEntityById(serviceId);
+        trainer.getServices().add(service);
+        repository.save(trainer);
+    }
+
+    @Transactional
+    public List<TrainerServiceResponse> getAllTrainers_Services(){
+        return repository.findAll()
+                .stream()
+                .map(trainerServiceMapper::toResponse)
+                .toList();
+    }
+    @Transactional
+    public List<TrainerServiceResponse> getAllTrainers_With_Services(){
+        return repository.findAll()
+                .stream()
+                .filter(trainer -> !trainer.getServices().isEmpty())
+                .map(trainerServiceMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public TrainerServiceResponse getTrainerServiceById(Long id){
+        Trainer trainer = getEntityById(id);
+        return trainerServiceMapper.toResponse(trainer);
+    }
+
+    @Transactional
+    public void deleteTrainerService (Long trainerId, Long serviceId){
+        Trainer trainer = getEntityById(trainerId);
+        SchoolService service = schoolServiceService.getEntityById(serviceId);
+        trainer.getServices().remove(service);
+        repository.save(trainer);
     }
 }

@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "trainers")
 @Getter
@@ -31,4 +34,13 @@ public class Trainer {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    @ManyToMany
+    @JoinTable(
+            name = "trainers_services",
+            joinColumns = @JoinColumn(name = "trainer_id"),
+            inverseJoinColumns = @JoinColumn (name = "service_id")
+    )
+    private Set<SchoolService> services = new HashSet<>();
+
 }

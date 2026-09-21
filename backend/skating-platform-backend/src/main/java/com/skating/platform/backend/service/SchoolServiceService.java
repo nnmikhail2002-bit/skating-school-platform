@@ -4,18 +4,18 @@ import com.skating.platform.backend.dto.request.SchoolServiceRequest;
 import com.skating.platform.backend.dto.request.UpdateSchoolServiceRequest;
 import com.skating.platform.backend.dto.response.SchoolServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
+import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.SchoolServiceMapper;
 import com.skating.platform.backend.repository.SchoolServiceRepository;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
 public class SchoolServiceService {
-
     private final SchoolServiceRepository repository;
     private final SchoolServiceMapper mapper;
 
@@ -33,8 +33,7 @@ public class SchoolServiceService {
     }
 
     public SchoolServiceResponse getServiceById(Long id){
-        SchoolService service;
-        service = getEntityById(id);
+        SchoolService service = getEntityById(id);
         return mapper.toResponse(service);
     }
 
@@ -44,7 +43,7 @@ public class SchoolServiceService {
         return mapper.toResponse(saved);
     }
 
-    private SchoolService getEntityById(Long id){
+    SchoolService getEntityById(Long id){
         return repository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Service not found")
@@ -61,8 +60,13 @@ public class SchoolServiceService {
         SchoolService saved = repository.save(existing);
         return mapper.toResponse(saved);
     }
+
+    @Transactional
     public void deleteService(Long id){
         SchoolService service = getEntityById(id);
+        for(Trainer trainer : service.getTrainers()){
+            trainer.getServices().remove(service);
+        }
         repository.delete(service);
     }
 }
