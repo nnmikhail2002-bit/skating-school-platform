@@ -1,4 +1,4 @@
-package com.skating.platform.backend.dto.request;
+package com.skating.platform.backend.dto.trainer.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TrainerRequest {
+public class CreateTrainerRequest {
     @NotBlank(message = "First name is required")
     @Size(
             min = 2,

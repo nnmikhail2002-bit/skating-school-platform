@@ -1,9 +1,9 @@
 package com.skating.platform.backend.service;
 
-import com.skating.platform.backend.dto.request.TrainerRequest;
-import com.skating.platform.backend.dto.request.UpdateTrainerRequest;
-import com.skating.platform.backend.dto.response.TrainerResponse;
-import com.skating.platform.backend.dto.response.TrainerServiceResponse;
+import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
+import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
+import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
+import com.skating.platform.backend.dto.trainer_service.responce.TrainerServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
 import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
@@ -38,7 +38,7 @@ public class TrainerService {
                 .toList();
     }
 
-    public TrainerResponse createTrainer(TrainerRequest request){
+    public TrainerResponse createTrainer(CreateTrainerRequest request){
         Trainer trainer = mapper.toEntity(request);
         Trainer saved = repository.save(trainer);
         return mapper.toResponse(saved);

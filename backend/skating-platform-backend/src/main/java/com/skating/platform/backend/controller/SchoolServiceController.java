@@ -1,8 +1,8 @@
 package com.skating.platform.backend.controller;
 
-import com.skating.platform.backend.dto.request.SchoolServiceRequest;
-import com.skating.platform.backend.dto.request.UpdateSchoolServiceRequest;
-import com.skating.platform.backend.dto.response.SchoolServiceResponse;
+import com.skating.platform.backend.dto.service.request.CreateSchoolServiceRequest;
+import com.skating.platform.backend.dto.service.request.UpdateSchoolServiceRequest;
+import com.skating.platform.backend.dto.service.response.SchoolServiceResponse;
 
 import com.skating.platform.backend.service.SchoolServiceService;
 import jakarta.validation.Valid;
@@ -27,7 +27,7 @@ public class SchoolServiceController {
 
     @PostMapping
     public SchoolServiceResponse createService(
-           @Valid @RequestBody SchoolServiceRequest request
+           @Valid @RequestBody CreateSchoolServiceRequest request
     ){
         return schoolServiceService.createService(request);
     }

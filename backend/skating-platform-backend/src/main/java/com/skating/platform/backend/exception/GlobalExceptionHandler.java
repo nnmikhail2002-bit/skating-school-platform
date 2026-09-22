@@ -6,7 +6,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import com.skating.platform.backend.dto.response.ErrorResponse;
+import com.skating.platform.backend.dto.error.response.ErrorResponse;
 
 import java.util.HashMap;
 import java.util.Map;

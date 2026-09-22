@@ -1,8 +1,8 @@
 package com.skating.platform.backend.mapper;
 
-import com.skating.platform.backend.dto.request.TrainerRequest;
-import com.skating.platform.backend.dto.request.UpdateTrainerRequest;
-import com.skating.platform.backend.dto.response.TrainerResponse;
+import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
+import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
+import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
 import com.skating.platform.backend.entity.Trainer;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ public class TrainerMapper {
         );
     }
 
-    public Trainer toEntity(TrainerRequest request){
+    public Trainer toEntity(CreateTrainerRequest request){
         Trainer trainer = new Trainer();
         trainer.setFirstName(request.getFirstName());
         trainer.setLastName(request.getLastName());

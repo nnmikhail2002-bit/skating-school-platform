@@ -1,19 +1,19 @@
-package com.skating.platform.backend.dto.response;
+package com.skating.platform.backend.dto.trainer.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Set;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class TrainerServiceResponse {
-    private Long trainerId;
+public class TrainerResponse {
+    private Long id;
     private String firstName;
     private String lastName;
-    private Set<SchoolServiceResponse> services;
+    private String phone;
+    private Integer experienceYears;
+    private Boolean active;
 }

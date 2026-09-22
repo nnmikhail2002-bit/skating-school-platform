@@ -1,7 +1,7 @@
 package com.skating.platform.backend.mapper;
 
-import com.skating.platform.backend.dto.request.SchoolServiceRequest;
-import com.skating.platform.backend.dto.response.SchoolServiceResponse;
+import com.skating.platform.backend.dto.service.request.CreateSchoolServiceRequest;
+import com.skating.platform.backend.dto.service.response.SchoolServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ public class SchoolServiceMapper {
                 service.getActive()
         );
     }
-    public SchoolService toEntity(SchoolServiceRequest request){
+    public SchoolService toEntity(CreateSchoolServiceRequest request){
         SchoolService schoolService = new SchoolService();
         schoolService.setName(request.getName());
         schoolService.setDescription(request.getDescription());

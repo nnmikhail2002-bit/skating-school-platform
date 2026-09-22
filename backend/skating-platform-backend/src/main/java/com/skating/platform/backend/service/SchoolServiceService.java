@@ -1,8 +1,8 @@
 package com.skating.platform.backend.service;
 
-import com.skating.platform.backend.dto.request.SchoolServiceRequest;
-import com.skating.platform.backend.dto.request.UpdateSchoolServiceRequest;
-import com.skating.platform.backend.dto.response.SchoolServiceResponse;
+import com.skating.platform.backend.dto.service.request.CreateSchoolServiceRequest;
+import com.skating.platform.backend.dto.service.request.UpdateSchoolServiceRequest;
+import com.skating.platform.backend.dto.service.response.SchoolServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
 import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
@@ -37,7 +37,7 @@ public class SchoolServiceService {
         return mapper.toResponse(service);
     }
 
-    public SchoolServiceResponse createService(SchoolServiceRequest request){
+    public SchoolServiceResponse createService(CreateSchoolServiceRequest request){
         SchoolService service = mapper.toEntity(request);
         SchoolService saved = repository.save(service);
         return mapper.toResponse(saved);

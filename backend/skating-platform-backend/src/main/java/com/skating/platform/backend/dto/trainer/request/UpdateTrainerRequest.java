@@ -1,4 +1,4 @@
-package com.skating.platform.backend.dto.request;
+package com.skating.platform.backend.dto.trainer.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

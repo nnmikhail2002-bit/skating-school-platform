@@ -1,19 +1,16 @@
 package com.skating.platform.backend.controller;
 
 
-import com.skating.platform.backend.dto.request.TrainerRequest;
-import com.skating.platform.backend.dto.response.TrainerResponse;
-import com.skating.platform.backend.dto.request.UpdateTrainerRequest;
-import com.skating.platform.backend.dto.response.TrainerServiceResponse;
-import com.skating.platform.backend.entity.SchoolService;
-import com.skating.platform.backend.service.SchoolServiceService;
+import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
+import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
+import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
+import com.skating.platform.backend.dto.trainer_service.responce.TrainerServiceResponse;
 import com.skating.platform.backend.service.TrainerService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/trainers")
@@ -35,7 +32,7 @@ public class TrainerController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TrainerResponse createTrainer (
-            @Valid @RequestBody TrainerRequest request
+            @Valid @RequestBody CreateTrainerRequest request
     ){
        return service.createTrainer(request);
     }

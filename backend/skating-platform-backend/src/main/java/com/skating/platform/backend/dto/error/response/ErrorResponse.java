@@ -1,4 +1,4 @@
-package com.skating.platform.backend.dto.response;
+package com.skating.platform.backend.dto.error.response;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import java.util.Map;

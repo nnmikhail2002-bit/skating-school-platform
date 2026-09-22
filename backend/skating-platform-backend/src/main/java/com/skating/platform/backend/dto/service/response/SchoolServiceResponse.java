@@ -1,4 +1,4 @@
-package com.skating.platform.backend.dto.response;
+package com.skating.platform.backend.dto.service.response;
 import java.math.BigDecimal;
 
 import lombok.AllArgsConstructor;
