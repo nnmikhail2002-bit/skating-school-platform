@@ -1,4 +1,4 @@
-package com.skating.platform.backend.dto.trainer_service.responce;
+package com.skating.platform.backend.dto.trainerService.response;
 
 import com.skating.platform.backend.dto.service.response.SchoolServiceResponse;
 import lombok.AllArgsConstructor;

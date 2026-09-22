@@ -26,6 +26,7 @@ public class SchoolServiceController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public SchoolServiceResponse createService(
            @Valid @RequestBody CreateSchoolServiceRequest request
     ){

@@ -4,7 +4,7 @@ package com.skating.platform.backend.controller;
 import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
 import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
 import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
-import com.skating.platform.backend.dto.trainer_service.responce.TrainerServiceResponse;
+import com.skating.platform.backend.dto.trainerService.response.TrainerServiceResponse;
 import com.skating.platform.backend.service.TrainerService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -60,8 +60,8 @@ public class TrainerController {
     }
 
     @GetMapping("/services")
-    public List<TrainerServiceResponse> getAllTrainers_Services (){
-        return service.getAllTrainers_Services();
+    public List<TrainerServiceResponse> getAllTrainersServices (){
+        return service.getAllTrainersServices();
     }
 
     @GetMapping("/{trainerId}/services")
@@ -69,8 +69,8 @@ public class TrainerController {
         return service.getTrainerServiceById(trainerId);
     }
     @GetMapping("/with-services")
-    public List<TrainerServiceResponse> getAllTrainers_With_Services (){
-        return service.getAllTrainers_With_Services();
+    public List<TrainerServiceResponse> getAllTrainersWithServices (){
+        return service.getAllTrainersWithServices();
     }
 
     @DeleteMapping("/{trainerId}/services/{serviceId}")

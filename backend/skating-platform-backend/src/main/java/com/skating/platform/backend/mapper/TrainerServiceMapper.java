@@ -1,6 +1,6 @@
 package com.skating.platform.backend.mapper;
 
-import com.skating.platform.backend.dto.trainer_service.responce.TrainerServiceResponse;
+import com.skating.platform.backend.dto.trainerService.response.TrainerServiceResponse;
 import com.skating.platform.backend.entity.Trainer;
 import org.springframework.stereotype.Component;
 
