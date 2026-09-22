@@ -17,7 +17,7 @@ public class SchoolServiceRequest {
     private String description;
 
     @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.0", message = "Price must be positive")
+    @DecimalMin(value = "0.0", message = "Price must be greater than zero")
     private BigDecimal price;
 
     @NotBlank(message = "Type is  required")

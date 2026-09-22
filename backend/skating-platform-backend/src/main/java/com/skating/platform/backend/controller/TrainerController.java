@@ -81,5 +81,5 @@ public class TrainerController {
     public void deleteTrainerService (@PathVariable Long trainerId, @PathVariable Long serviceId){
         service.deleteTrainerService(trainerId, serviceId);
     }
-
+    
 }
