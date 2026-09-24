@@ -6,6 +6,8 @@ import com.skating.platform.backend.dto.service.response.SchoolServiceResponse;
 
 import com.skating.platform.backend.service.SchoolServiceService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +23,8 @@ public class SchoolServiceController {
     }
 
     @GetMapping
-    public List<SchoolServiceResponse> getAllServices(){
-        return schoolServiceService.getAllServices();
+    public Page<SchoolServiceResponse> getAllServices(Pageable pageable){
+        return schoolServiceService.getAllServices(pageable);
     }
 
     @PostMapping

@@ -8,6 +8,8 @@ import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.SchoolServiceMapper;
 import com.skating.platform.backend.repository.SchoolServiceRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,12 +26,9 @@ public class SchoolServiceService {
         this.mapper = mapper;
     }
 
-    public List<SchoolServiceResponse> getAllServices(){
-
-        return repository.findAll()
-                .stream()
-                .map(mapper::toResponse) // (mapper -> mapper.toResponse(service))
-                .toList();
+    public Page<SchoolServiceResponse> getAllServices(Pageable pageable){
+        return repository.findAll(pageable)
+                .map(mapper::toResponse); // (mapper -> mapper.toResponse(service))
     }
 
     public SchoolServiceResponse getServiceById(Long id){

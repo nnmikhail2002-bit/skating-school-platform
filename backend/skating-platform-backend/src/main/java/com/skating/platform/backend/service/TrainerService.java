@@ -9,7 +9,8 @@ import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ConflictException;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.TrainerMapper;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.skating.platform.backend.mapper.TrainerServiceMapper;
 import com.skating.platform.backend.repository.TrainerRepository;
 import org.springframework.stereotype.Service;
@@ -32,11 +33,9 @@ public class TrainerService {
         this.trainerServiceMapper = trainerServiceMapper;
     }
 
-    public List<TrainerResponse> getAllTrainers(){
-        return repository.findAll()
-                .stream()
-                .map(mapper::toResponse)
-                .toList();
+    public Page<TrainerResponse> getAllTrainers(Pageable pageable){
+        return repository.findAll(pageable)
+                .map(mapper::toResponse);
     }
 
     public TrainerResponse createTrainer(CreateTrainerRequest request){
@@ -98,19 +97,15 @@ public class TrainerService {
     }
 
     @Transactional
-    public List<TrainerServiceResponse> getAllTrainersServices(){
-        return repository.findAll()
-                .stream()
-                .map(trainerServiceMapper::toResponse)
-                .toList();
+    public Page<TrainerServiceResponse> getAllTrainersServices(Pageable pageable){
+        return repository.findAll(pageable)
+                .map(trainerServiceMapper::toResponse);
     }
+
     @Transactional
-    public List<TrainerServiceResponse> getAllTrainersWithServices(){
-        return repository.findAll()
-                .stream()
-                .filter(trainer -> !trainer.getServices().isEmpty())
-                .map(trainerServiceMapper::toResponse)
-                .toList();
+    public Page<TrainerServiceResponse> getAllTrainersWithServices(Pageable pageable){
+        return repository.findDistinctByServicesIsNotEmpty(pageable)
+                .map(trainerServiceMapper::toResponse);
     }
 
     @Transactional

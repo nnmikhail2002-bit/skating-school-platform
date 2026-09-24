@@ -9,7 +9,8 @@ import com.skating.platform.backend.service.TrainerService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 @RestController
@@ -25,8 +26,8 @@ public class TrainerController {
 
 
     @GetMapping
-    public List<TrainerResponse> getAllTrainers(){
-        return service.getAllTrainers();
+    public Page<TrainerResponse> getAllTrainers(Pageable pageable){
+        return service.getAllTrainers(pageable);
     }
 
     @PostMapping
@@ -60,8 +61,8 @@ public class TrainerController {
     }
 
     @GetMapping("/services")
-    public List<TrainerServiceResponse> getAllTrainersServices (){
-        return service.getAllTrainersServices();
+    public Page<TrainerServiceResponse> getAllTrainersServices (Pageable pageable){
+        return service.getAllTrainersServices(pageable);
     }
 
     @GetMapping("/{trainerId}/services")
@@ -69,8 +70,8 @@ public class TrainerController {
         return service.getTrainerServiceById(trainerId);
     }
     @GetMapping("/with-services")
-    public List<TrainerServiceResponse> getAllTrainersWithServices (){
-        return service.getAllTrainersWithServices();
+    public Page<TrainerServiceResponse> getAllTrainersWithServices (Pageable pageable){
+        return service.getAllTrainersWithServices(pageable);
     }
 
     @DeleteMapping("/{trainerId}/services/{serviceId}")
