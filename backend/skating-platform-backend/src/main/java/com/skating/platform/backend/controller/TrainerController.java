@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/trainers")
@@ -78,6 +78,14 @@ public class TrainerController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTrainerService (@PathVariable Long trainerId, @PathVariable Long serviceId){
         service.deleteTrainerService(trainerId, serviceId);
+    }
+
+    @GetMapping("/search")
+    public Page<TrainerResponse> searchTrainers(
+            @RequestParam String query,
+            Pageable pageable
+    ){
+        return service.searchTrainers(query, pageable);
     }
     
 }

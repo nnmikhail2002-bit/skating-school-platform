@@ -7,6 +7,11 @@ import org.springframework.data.domain.Pageable;
 public interface TrainerRepository extends JpaRepository<Trainer, Long> {
    boolean existsByPhone(String phone);
    Page<Trainer> findDistinctByServicesIsNotEmpty(Pageable pageable);
+   Page<Trainer> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(
+           String firstName,
+           String lastName,
+           Pageable pageable
+   );
 }
 
 

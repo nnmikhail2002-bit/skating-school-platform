@@ -16,9 +16,6 @@ import com.skating.platform.backend.repository.TrainerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
-
 @Service
 public class TrainerService {
     private final TrainerServiceMapper trainerServiceMapper;
@@ -121,4 +118,10 @@ public class TrainerService {
         trainer.getServices().remove(service);
         repository.save(trainer);
     }
+    public Page<TrainerResponse> searchTrainers(String query, Pageable pageable){
+        return repository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query, pageable)
+                .map(mapper::toResponse);
+    }
+
+
 }

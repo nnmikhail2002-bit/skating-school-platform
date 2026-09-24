@@ -12,9 +12,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.domain.Specification;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 @Service
 public class SchoolServiceService {
@@ -68,4 +69,59 @@ public class SchoolServiceService {
         }
         repository.delete(service);
     }
+
+    public Page<SchoolServiceResponse> searchServices(String query, Pageable pageable){
+        return repository
+                .findByNameContainingIgnoreCaseOrTypeContainingIgnoreCase(query, query, pageable)
+                .map(mapper::toResponse);
+    }
+
+    public Page<SchoolServiceResponse> filterServices(
+            String name,
+            String type,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Boolean active,
+            Pageable pageable
+    ){
+        Specification<SchoolService> spec = (root, query, cb) ->
+                cb.conjunction();
+
+        if(name != null && !name.isBlank()){
+            spec = spec.and(
+                    (root, query, cb) ->
+                             cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
+        }
+        if (type != null && !type.isBlank()) {
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.equal(cb.lower(root.get("type")), type.toLowerCase())
+            );
+        }
+
+        if (minPrice != null) {
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.greaterThanOrEqualTo(root.get("price"), minPrice)
+            );
+        }
+
+        if (maxPrice != null) {
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.lessThanOrEqualTo(root.get("price"), maxPrice)
+            );
+        }
+
+        if (active != null) {
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.equal(root.get("active"), active)
+            );
+        }
+
+        return repository.findAll(spec, pageable)
+                .map(mapper::toResponse);
+    }
+
 }
