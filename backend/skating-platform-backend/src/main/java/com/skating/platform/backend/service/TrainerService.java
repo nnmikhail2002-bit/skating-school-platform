@@ -6,6 +6,7 @@ import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
 import com.skating.platform.backend.dto.trainerService.response.TrainerServiceResponse;
 import com.skating.platform.backend.entity.SchoolService;
 import com.skating.platform.backend.entity.Trainer;
+import com.skating.platform.backend.exception.ConflictException;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.TrainerMapper;
 
@@ -39,6 +40,11 @@ public class TrainerService {
     }
 
     public TrainerResponse createTrainer(CreateTrainerRequest request){
+        if (repository.existsByPhone(request.getPhone())){
+            throw new ConflictException(
+                    "Trainer with this phone already exists"
+            );
+        }
         Trainer trainer = mapper.toEntity(request);
         Trainer saved = repository.save(trainer);
         return mapper.toResponse(saved);
@@ -59,6 +65,14 @@ public class TrainerService {
     public TrainerResponse updateTrainer(Long id, UpdateTrainerRequest request){
 
         Trainer existing = getEntityById(id);
+
+        if(repository.existsByPhone(request.getPhone())
+                && !existing.getPhone().equals(request.getPhone())){
+
+            throw new ConflictException(
+                    "Trainer with this phone already exists"
+            );
+        }
 
         mapper.updateEntity(existing, request);
 
