@@ -27,8 +27,6 @@ public class TrainerController {
         this.service = service;
     }
 
-
-
     @Operation (summary = "Получить список тренеров", description =  "Возвращает тренеров с пагинацией и сортировкой")
     @GetMapping
     public Page<TrainerResponse> getAllTrainers(Pageable pageable){
@@ -185,5 +183,4 @@ public class TrainerController {
     ){
         return service.searchTrainers(query, pageable);
     }
-    
 }

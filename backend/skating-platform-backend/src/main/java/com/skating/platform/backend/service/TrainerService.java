@@ -118,6 +118,7 @@ public class TrainerService {
         trainer.getServices().remove(service);
         repository.save(trainer);
     }
+
     public Page<TrainerResponse> searchTrainers(String query, Pageable pageable){
         return repository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query, pageable)
                 .map(mapper::toResponse);
