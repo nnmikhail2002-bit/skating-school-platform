@@ -154,6 +154,7 @@ public class TrainerController {
 
     @Operation (summary = "Получить тренеров с услугами", description =  "Возвращает всех тренеров, у которых есть назначенные услуги")
     @GetMapping("/with-services")
+
     public Page<TrainerServiceResponse> getAllTrainersWithServices (Pageable pageable){
         return service.getAllTrainersWithServices(pageable);
     }

@@ -27,7 +27,7 @@ public class StudentService {
         return repository.findAll(pageable)
                 .map(mapper::toResponse);
     }
-
+    @Transactional
     public StudentResponse createStudent(CreateStudentRequest request){
         if (repository.existsByPhone(request.getPhone())){
             throw new ConflictException(
@@ -50,7 +50,7 @@ public class StudentService {
         Student student = getEntityById(id);
         return mapper.toResponse(student);
     }
-
+    @Transactional
     public StudentResponse updateStudent(Long id, UpdateStudentRequest request){
 
         Student existing = getEntityById(id);

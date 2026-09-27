@@ -34,7 +34,7 @@ public class TrainerService {
         return repository.findAll(pageable)
                 .map(mapper::toResponse);
     }
-
+    @Transactional
     public TrainerResponse createTrainer(CreateTrainerRequest request){
         if (repository.existsByPhone(request.getPhone())){
             throw new ConflictException(
@@ -57,7 +57,7 @@ public class TrainerService {
         Trainer trainer = getEntityById(id);
         return mapper.toResponse(trainer);
     }
-
+    @Transactional
     public TrainerResponse updateTrainer(Long id, UpdateTrainerRequest request){
 
         Trainer existing = getEntityById(id);

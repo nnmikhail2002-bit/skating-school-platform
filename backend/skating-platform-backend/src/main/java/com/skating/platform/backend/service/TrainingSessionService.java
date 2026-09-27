@@ -113,12 +113,12 @@ public class TrainingSessionService {
                         new ResourceNotFoundException("Training Session not found")
                 );
     }
-
+    @Transactional(readOnly = true)
     public TrainingSessionResponse getTrainingSessionById(Long id) {
         TrainingSession trainingSession = getEntityById(id);
         return mapper.toResponse(trainingSession);
     }
-
+    @Transactional(readOnly = true)
     public Page<TrainingSessionResponse> getAllTrainingSessions(Pageable pageable) {
         return repository.findAll(pageable)
                 .map(mapper::toResponse);

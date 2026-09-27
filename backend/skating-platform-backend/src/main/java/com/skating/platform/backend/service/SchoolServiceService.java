@@ -37,6 +37,7 @@ public class SchoolServiceService {
         return mapper.toResponse(service);
     }
 
+    @Transactional
     public SchoolServiceResponse createService(CreateSchoolServiceRequest request){
         SchoolService service = mapper.toEntity(request);
         SchoolService saved = repository.save(service);
@@ -50,6 +51,7 @@ public class SchoolServiceService {
                 );
     }
 
+    @Transactional
     public SchoolServiceResponse updateService(Long id, UpdateSchoolServiceRequest updatedService){
         SchoolService existing = getEntityById(id);
         existing.setName(updatedService.getName());
