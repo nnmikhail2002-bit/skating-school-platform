@@ -3,12 +3,14 @@ package com.skating.platform.backend.service;
 import com.skating.platform.backend.dto.appusers.request.CreateAppUserRequest;
 import com.skating.platform.backend.dto.appusers.request.LoginRequest;
 import com.skating.platform.backend.dto.appusers.response.AppUserResponse;
+import com.skating.platform.backend.dto.appusers.response.AuthResponse;
 import com.skating.platform.backend.entity.AppUser;
 import com.skating.platform.backend.entity.Role;
 import com.skating.platform.backend.exception.ConflictException;
 import com.skating.platform.backend.exception.UnauthorizedException;
 import com.skating.platform.backend.mapper.AppUserMapper;
 import com.skating.platform.backend.repository.AppUserRepository;
+import com.skating.platform.backend.security.JwtService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,11 +20,13 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AppUserMapper appUserMapper;
     private final AppUserRepository appUserRepository;
+    private final JwtService jwtService;
 
-    public AuthService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, AppUserMapper appUserMapper) {
+    public AuthService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, AppUserMapper appUserMapper, JwtService jwtService) {
         this.appUserMapper = appUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.appUserRepository = appUserRepository;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -44,7 +48,7 @@ public class AuthService {
         return appUserMapper.toResponse(saved);
     }
 
-    public AppUserResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         String email = request.getEmail()
                 .trim()
                 .toLowerCase();
@@ -56,7 +60,10 @@ public class AuthService {
         if (!passwordMatches) throw new UnauthorizedException("Invalid email or password");
         if (!user.getActive()) throw new UnauthorizedException("Invalid email or password");
 
-        return appUserMapper.toResponse(user);
+        String token = jwtService.generateToken(user);
+
+        return new AuthResponse(token, "Bearer", appUserMapper.toResponse(user));
+
     }
 
 }

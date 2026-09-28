@@ -3,6 +3,7 @@ package com.skating.platform.backend.controller;
 import com.skating.platform.backend.dto.appusers.request.CreateAppUserRequest;
 import com.skating.platform.backend.dto.appusers.request.LoginRequest;
 import com.skating.platform.backend.dto.appusers.response.AppUserResponse;
+import com.skating.platform.backend.dto.appusers.response.AuthResponse;
 import com.skating.platform.backend.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -65,7 +66,7 @@ public class AuthController {
             )
     })
     @PostMapping("/login")
-    public AppUserResponse login(@Valid @RequestBody LoginRequest request) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
 
