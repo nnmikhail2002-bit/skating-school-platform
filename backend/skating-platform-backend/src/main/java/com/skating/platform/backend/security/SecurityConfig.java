@@ -115,6 +115,21 @@ public class SecurityConfig {
                                 "/api/bookings",
                                 "/api/bookings/*"
                         ).hasAnyRole("TRAINER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/training-sessions",
+                                "/api/training-sessions/*"
+                        ).hasAnyRole("STUDENT", "TRAINER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/training-sessions"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/training-sessions/*"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/training-sessions/*"
+                        ).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
