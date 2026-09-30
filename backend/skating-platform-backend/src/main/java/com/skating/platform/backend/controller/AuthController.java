@@ -1,7 +1,7 @@
 package com.skating.platform.backend.controller;
 
-import com.skating.platform.backend.dto.appusers.request.CreateAppUserRequest;
 import com.skating.platform.backend.dto.appusers.request.LoginRequest;
+import com.skating.platform.backend.dto.appusers.request.RegisterStudentRequest;
 import com.skating.platform.backend.dto.appusers.response.AppUserResponse;
 import com.skating.platform.backend.dto.appusers.response.AuthResponse;
 import com.skating.platform.backend.service.AuthService;
@@ -43,7 +43,7 @@ public class AuthController {
     })
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AppUserResponse register(@Valid @RequestBody CreateAppUserRequest request) {
+    public AppUserResponse register(@Valid @RequestBody RegisterStudentRequest request) {
         return authService.register(request);
     }
 

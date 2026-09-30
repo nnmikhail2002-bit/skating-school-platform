@@ -14,6 +14,14 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AppUser {
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id")
+    private Student student;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "trainer_id")
+    private Trainer trainer;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -1,15 +1,17 @@
 package com.skating.platform.backend.service;
 
-import com.skating.platform.backend.dto.appusers.request.CreateAppUserRequest;
 import com.skating.platform.backend.dto.appusers.request.LoginRequest;
+import com.skating.platform.backend.dto.appusers.request.RegisterStudentRequest;
 import com.skating.platform.backend.dto.appusers.response.AppUserResponse;
 import com.skating.platform.backend.dto.appusers.response.AuthResponse;
 import com.skating.platform.backend.entity.AppUser;
 import com.skating.platform.backend.entity.Role;
+import com.skating.platform.backend.entity.Student;
 import com.skating.platform.backend.exception.ConflictException;
 import com.skating.platform.backend.exception.UnauthorizedException;
 import com.skating.platform.backend.mapper.AppUserMapper;
 import com.skating.platform.backend.repository.AppUserRepository;
+import com.skating.platform.backend.repository.StudentRepository;
 import com.skating.platform.backend.security.JwtService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,16 +23,18 @@ public class AuthService {
     private final AppUserMapper appUserMapper;
     private final AppUserRepository appUserRepository;
     private final JwtService jwtService;
+    private final StudentRepository studentRepository;
 
-    public AuthService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, AppUserMapper appUserMapper, JwtService jwtService) {
+    public AuthService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, AppUserMapper appUserMapper, JwtService jwtService, StudentRepository studentRepository) {
         this.appUserMapper = appUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.appUserRepository = appUserRepository;
         this.jwtService = jwtService;
+        this.studentRepository = studentRepository;
     }
 
     @Transactional
-    public AppUserResponse register(CreateAppUserRequest request) {
+    public AppUserResponse register(RegisterStudentRequest request) {
         String email = request.getEmail()
                 .trim()
                 .toLowerCase();
@@ -39,7 +43,24 @@ public class AuthService {
             throw new ConflictException("Email is already in use");
         }
 
+        Student student = new Student();
+
+        if (studentRepository.existsByPhone(request.getPhone())) {
+            throw new ConflictException(
+                    "Student with this phone already exists"
+            );
+        }
+
+        student.setPhone(request.getPhone());
+        student.setEmail(email);
+        student.setFirstName(request.getFirstName());
+        student.setLastName(request.getLastName());
+        student.setActive(true);
+
+        Student savedStudent = studentRepository.save(student);
+
         AppUser user = new AppUser();
+        user.setStudent(savedStudent);
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.STUDENT);
