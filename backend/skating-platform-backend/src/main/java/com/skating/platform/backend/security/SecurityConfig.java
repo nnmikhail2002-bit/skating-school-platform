@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -77,7 +78,43 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers("/api/students/**").hasRole("STUDENT")
+                        .requestMatchers(
+                                "/api/students/me").hasRole("STUDENT")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/students",
+                                "/api/students/search",
+                                "/api/students/*").hasAnyRole("TRAINER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/students"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/students/*"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/students/*"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/bookings"
+                        ).hasRole("STUDENT")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/bookings/me"
+                        ).hasRole("STUDENT")
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/bookings/cancel"
+                        ).hasRole("STUDENT")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/bookings",
+                                "/api/bookings/*"
+                        ).hasAnyRole("TRAINER", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

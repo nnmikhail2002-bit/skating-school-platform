@@ -11,6 +11,8 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -50,10 +52,8 @@ public class BookingController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse createBooking(
-            @Valid @RequestBody CreateBookingRequest request
-    ){
-        return bookingService.createBooking(request);
+    public BookingResponse createBooking(@Valid @RequestBody CreateBookingRequest request,  @AuthenticationPrincipal Jwt jwt){
+        return bookingService.createBooking(request, jwt.getSubject());
     }
 
     @Operation(summary = "Get booking by ID", description = "Returns a booking by identifier")
@@ -72,6 +72,22 @@ public class BookingController {
         return bookingService.getBookingById(bookingId);
     }
 
+    @Operation(summary = "Get booking by ID", description = "Returns a booking by identifier")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Booking found"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Student or training session not found"
+            )
+    })
+    @GetMapping("/me")
+    public Page<BookingResponse> getCurrentBookings(@AuthenticationPrincipal Jwt jwt, Pageable pageable){
+        return bookingService.getCurrentBookings(jwt.getSubject(), pageable);
+    }
+
     @Operation(summary = "Cancel booking by ID", description = "Cancel booking by identifier")
     @ApiResponses({
             @ApiResponse(
@@ -83,9 +99,9 @@ public class BookingController {
                     description = "Student or training session not found"
             )
     })
-    @PatchMapping("/{bookingId}/cancel")
-    public BookingResponse cancelBooking(@PathVariable Long bookingId){
-        return bookingService.cancelBooking(bookingId);
+    @PatchMapping("/cancel")
+    public BookingResponse cancelBooking(@Valid @RequestBody CreateBookingRequest request, @AuthenticationPrincipal Jwt jwt){
+        return bookingService.cancelBooking(request, jwt.getSubject());
     }
 
 }

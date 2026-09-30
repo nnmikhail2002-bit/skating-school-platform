@@ -20,22 +20,15 @@ import java.time.LocalDateTime;
 @Service
 public class BookingService {
     private final BookingRepository repository;
-    private final StudentRepository studentRepository;
     private final TrainingSessionRepository trainingSessionRepository;
     private final BookingMapper mapper;
+    private final AppUserRepository appUserRepository;
 
-    public BookingService(BookingMapper mapper, TrainingSessionRepository trainingSessionRepository, StudentRepository studentRepository, BookingRepository repository) {
+    public BookingService(BookingMapper mapper, TrainingSessionRepository trainingSessionRepository, BookingRepository repository, AppUserRepository appUserRepository) {
         this.mapper = mapper;
         this.repository = repository;
         this.trainingSessionRepository = trainingSessionRepository;
-        this.studentRepository = studentRepository;
-    }
-
-    private Student getStudentById(Long id) {
-        return studentRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Student not found")
-                );
+        this.appUserRepository = appUserRepository;
     }
 
     private TrainingSession getTrainingSessionById(Long id) {
@@ -66,9 +59,43 @@ public class BookingService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public Page<BookingResponse> getCurrentBookings(String email, Pageable pageable) {
+
+        AppUser user = appUserRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        Student student = user.getStudent();
+
+        if (student == null) {
+            throw new ResourceNotFoundException(
+                    "Student profile not found"
+            );
+        }
+        Long studentId = student.getId();
+        return repository.findByStudent_Id(studentId, pageable)
+                .map(mapper::toResponse);
+
+    }
+
     @Transactional
-    public BookingResponse createBooking(CreateBookingRequest request) {
-        Student student = getStudentById(request.getStudentId());
+    public BookingResponse createBooking(CreateBookingRequest request, String email) {
+
+        AppUser user = appUserRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        Student student = user.getStudent();
+
+        if (student == null) {
+            throw new ResourceNotFoundException(
+                    "Student profile not found"
+            );
+        }
+
         TrainingSession session = getTrainingSessionById(request.getTrainingSessionId());
         validateSession(session);
         Optional<Booking> existingBooking = repository.findByStudent_IdAndTrainingSession_Id(student.getId(), session.getId());
@@ -92,7 +119,7 @@ public class BookingService {
         return mapper.toResponse(saved);
     }
 
-    Booking getEntityById(Long id){
+    Booking getEntityById(Long id) {
         return repository.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Booking not found")
@@ -112,8 +139,26 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse cancelBooking(Long id){
-        Booking booking = getEntityById(id);
+    public BookingResponse cancelBooking(CreateBookingRequest request, String email) {
+        AppUser user = appUserRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        Student student = user.getStudent();
+
+        if (student == null) {
+            throw new ResourceNotFoundException(
+                    "Student profile not found"
+            );
+        }
+
+        Booking booking = repository.findByStudent_IdAndTrainingSession_Id(
+                        student.getId(),
+                        request.getTrainingSessionId()
+                ).orElseThrow(() ->
+                        new ResourceNotFoundException("Booking not found")
+                );
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             return mapper.toResponse(booking);

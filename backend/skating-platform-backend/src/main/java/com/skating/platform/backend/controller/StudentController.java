@@ -13,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 
 @Tag(name = "Students", description = "Management of students")
@@ -69,6 +71,23 @@ public class StudentController {
     public StudentResponse getStudentById(@PathVariable Long studentId) {
         return service.getStudentById(studentId);
     }
+
+    @Operation(summary = "Get student by ID", description = "Returns a student by identifier")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Student found"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Student is not found"
+            )
+    })
+    @GetMapping("/me")
+    public StudentResponse getCurrentStudent(@AuthenticationPrincipal Jwt jwt) {
+        return service.getCurrentStudent(jwt.getSubject());
+    }
+
 
     @Operation (summary = "Update data student by ID", description = "Update fields student by his identifier")
     @ApiResponses({

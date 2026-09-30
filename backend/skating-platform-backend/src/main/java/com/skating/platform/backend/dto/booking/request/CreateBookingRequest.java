@@ -5,13 +5,10 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 public class CreateBookingRequest {
-    @NotNull(message = "Student Id invalid")
-    private Long studentId;
     @NotNull(message = "Training session Id invalid")
+    @Positive(message = "Training session Id must be positive")
     private Long trainingSessionId;
 }
