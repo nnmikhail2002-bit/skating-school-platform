@@ -4,11 +4,11 @@ import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
 import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
 import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
 import com.skating.platform.backend.dto.trainerService.response.TrainerServiceResponse;
-import com.skating.platform.backend.entity.SchoolService;
-import com.skating.platform.backend.entity.Trainer;
+import com.skating.platform.backend.entity.*;
 import com.skating.platform.backend.exception.ConflictException;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.TrainerMapper;
+import com.skating.platform.backend.repository.AppUserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.skating.platform.backend.mapper.TrainerServiceMapper;
@@ -22,12 +22,43 @@ public class TrainerService {
     private final TrainerRepository repository;
     private final TrainerMapper mapper;
     private final SchoolServiceService schoolServiceService;
+    private final AppUserRepository appUserRepository;
 
-    public TrainerService(TrainerRepository repository, TrainerMapper mapper, SchoolServiceService schoolServiceService, TrainerServiceMapper trainerServiceMapper){
+
+    public TrainerService(TrainerRepository repository, TrainerMapper mapper, SchoolServiceService schoolServiceService,
+                          TrainerServiceMapper trainerServiceMapper, AppUserRepository appUserRepository){
         this.repository = repository;
         this.mapper = mapper;
         this.schoolServiceService = schoolServiceService;
         this.trainerServiceMapper = trainerServiceMapper;
+        this.appUserRepository = appUserRepository;
+    }
+
+
+    private Trainer getCurrentTrainerEntity(String userEmail) {
+
+        AppUser user = appUserRepository.findByEmail(userEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        Trainer trainer = user.getTrainer();
+
+        if (trainer == null) {
+            throw new ResourceNotFoundException(
+                    "Trainer profile not found"
+            );
+        }
+
+        return trainer;
+    }
+
+    @Transactional(readOnly = true)
+    public TrainerResponse getCurrentTrainer(String userEmail) {
+
+        Trainer trainer = getCurrentTrainerEntity(userEmail);
+
+        return mapper.toResponse(trainer);
     }
 
     public Page<TrainerResponse> getAllTrainers(Pageable pageable){
@@ -97,6 +128,15 @@ public class TrainerService {
     public Page<TrainerServiceResponse> getAllTrainersServices(Pageable pageable){
         return repository.findAll(pageable)
                 .map(trainerServiceMapper::toResponse);
+    }
+    @Transactional(readOnly = true)
+    public TrainerServiceResponse getCurrentTrainerServices(
+            String userEmail
+    ) {
+
+        Trainer trainer = getCurrentTrainerEntity(userEmail);
+
+        return trainerServiceMapper.toResponse(trainer);
     }
 
     @Transactional

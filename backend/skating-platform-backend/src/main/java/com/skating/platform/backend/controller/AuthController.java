@@ -24,13 +24,13 @@ public class AuthController {
     }
 
     @Operation(
-            summary = "Register user",
-            description = "Registers a new student account"
+            summary = "Register student",
+            description = "Registers a new student account and creates the linked student profile"
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
-                    description = "User registered"
+                    description = "Student account successfully registered"
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -38,7 +38,7 @@ public class AuthController {
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = "Email is already in use"
+                    description = "Email or phone number is already in use"
             )
     })
     @PostMapping("/register")
@@ -49,7 +49,7 @@ public class AuthController {
 
     @Operation(
             summary = "Login user",
-            description = "Logins student account"
+            description = "Authenticates a user and returns a JWT access token"
     )
     @ApiResponses({
             @ApiResponse(
@@ -58,7 +58,7 @@ public class AuthController {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Invalid login data"
+                    description = "Invalid login request data"
             ),
             @ApiResponse(
                     responseCode = "401",

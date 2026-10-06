@@ -60,6 +60,33 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public Page<BookingResponse> getCurrentTrainerBookings(
+            String userEmail,
+            Pageable pageable
+    ) {
+
+        AppUser user = appUserRepository.findByEmail(userEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        Trainer trainer = user.getTrainer();
+
+        if (trainer == null) {
+            throw new ResourceNotFoundException(
+                    "Trainer profile not found"
+            );
+        }
+
+        return repository
+                .findByTrainingSession_Trainer_Id(
+                        trainer.getId(),
+                        pageable
+                )
+                .map(mapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Page<BookingResponse> getCurrentBookings(String email, Pageable pageable) {
 
         AppUser user = appUserRepository.findByEmail(email)

@@ -1,6 +1,5 @@
 package com.skating.platform.backend.controller;
 
-
 import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
 import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
 import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
@@ -12,6 +11,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,31 +23,34 @@ import org.springframework.data.domain.Pageable;
 @RequestMapping("/api/trainers")
 public class TrainerController {
     private final TrainerService service;
-
     public TrainerController(TrainerService service){
         this.service = service;
     }
 
-    @Operation (summary = "Получить список тренеров", description =  "Возвращает тренеров с пагинацией и сортировкой")
+    @Operation(
+            summary = "Get all trainers",
+            description = "Returns trainers with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trainers successfully returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping
     public Page<TrainerResponse> getAllTrainers(Pageable pageable){
         return service.getAllTrainers(pageable);
     }
 
-    @Operation (summary = "Создать тренера", description =  "Создает тренера")
+    @Operation(
+            summary = "Create trainer",
+            description = "Creates a new trainer profile"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Тренер создан"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Некорректные данные тренера"
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "Тренер с таким номером телефона уже существует"
-            )
+            @ApiResponse(responseCode = "201", description = "Trainer successfully created"),
+            @ApiResponse(responseCode = "400", description = "Invalid trainer data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "409", description = "Trainer with this phone number already exists")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -56,56 +60,62 @@ public class TrainerController {
        return service.createTrainer(request);
     }
 
-    @Operation (summary = "Получить тренера по ID", description =  "Возвращает тренера по его идентификатору")
+    @Operation(
+            summary = "Get trainer by ID",
+            description = "Returns a trainer by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Тренер найден"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Тренер не найден"
-            )
+            @ApiResponse(responseCode = "200", description = "Trainer found"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
     @GetMapping("/{trainerId}")
     public TrainerResponse getTrainerById (@PathVariable Long trainerId){
         return service.getTrainerById(trainerId);
     }
 
-    @Operation (summary = "Обновить данные тренера по ID", description =  "Обновляет поля тренера по его идентификатору")
+    @Operation(
+            summary = "Get current trainer profile",
+            description = "Returns the trainer profile linked to the authenticated account"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Тренер найден и успешно обновлен"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Некорректные данные для обновления тренера"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Тренер не найден"
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "Указанный номер телефона уже используется другим тренером"
-            )
+            @ApiResponse(responseCode = "200", description = "Current trainer profile returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Trainer role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer profile not found")
+    })
+    @GetMapping("/me")
+    public TrainerResponse getCurrentTrainer(@AuthenticationPrincipal Jwt jwt) {
+        return service.getCurrentTrainer(jwt.getSubject());
+    }
+
+    @Operation(
+            summary = "Update trainer",
+            description = "Updates an existing trainer by its identifier"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trainer successfully updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid trainer data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer not found"),
+            @ApiResponse(responseCode = "409", description = "Phone number is already used by another trainer")
     })
     @PutMapping("/{trainerId}")
     public TrainerResponse updateTrainer(@PathVariable Long trainerId, @Valid @RequestBody UpdateTrainerRequest request){
         return service.updateTrainer(trainerId, request);
     }
 
-    @Operation (summary = "Удалить тренера по ID", description =  "Удаляет тренера по его идентификатору")
+    @Operation(
+            summary = "Delete trainer",
+            description = "Deletes a trainer by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Тренер успешно удален"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Тренер не найден"
-            )
+            @ApiResponse(responseCode = "204", description = "Trainer successfully deleted"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
     @DeleteMapping("/{trainerId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -113,16 +123,15 @@ public class TrainerController {
         service.deleteTrainer(trainerId);
     }
 
-    @Operation (summary = "Добавление тренеру услуги по ID тренера и ID сервиса", description =  "Добавляет тренеру услугу")
+    @Operation(
+            summary = "Assign service to trainer",
+            description = "Assigns a school service to a trainer using trainer and service identifiers"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Тренеру успешно добавлена услуга"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Тренер не найден/услуга не найдена"
-            )
+            @ApiResponse(responseCode = "204", description = "Service successfully assigned to trainer"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer or service not found")
     })
     @PostMapping("/{trainerId}/services/{serviceId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -130,45 +139,77 @@ public class TrainerController {
         service.addServiceToTrainer(trainerId, serviceId);
     }
 
-    @Operation (summary = "Вывод всех услуг тренеров", description =  "Выводит все услуги тренеров с пагинацией")
+    @Operation(
+            summary = "Get services for all trainers",
+            description = "Returns trainers together with their assigned services using pagination"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trainer services successfully returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping("/services")
     public Page<TrainerServiceResponse> getAllTrainersServices (Pageable pageable){
         return service.getAllTrainersServices(pageable);
     }
 
-    @Operation (summary = "Вывод всех услуг тренера по ID", description =  "Выводит все услуги тренера")
+    @Operation(
+            summary = "Get current trainer services",
+            description = "Returns services assigned to the trainer linked to the authenticated account"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "успешный вывод"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Тренер не найден"
-            )
+            @ApiResponse(responseCode = "200", description = "Current trainer services returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Trainer role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer profile not found")
+    })
+    @GetMapping("/me/services")
+    public TrainerServiceResponse getCurrentTrainerServices(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return service.getCurrentTrainerServices(
+                jwt.getSubject()
+        );
+    }
+
+    @Operation(
+            summary = "Get trainer services by trainer ID",
+            description = "Returns services assigned to a trainer by trainer identifier"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trainer services returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
     @GetMapping("/{trainerId}/services")
     public TrainerServiceResponse getTrainerServicesById (@PathVariable Long trainerId){
         return service.getTrainerServiceById(trainerId);
     }
 
-    @Operation (summary = "Получить тренеров с услугами", description =  "Возвращает всех тренеров, у которых есть назначенные услуги")
-    @GetMapping("/with-services")
 
+    @Operation(
+            summary = "Get trainers with assigned services",
+            description = "Returns trainers that have at least one assigned service"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Trainers successfully returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @GetMapping("/with-services")
     public Page<TrainerServiceResponse> getAllTrainersWithServices (Pageable pageable){
         return service.getAllTrainersWithServices(pageable);
     }
-
-    @Operation (summary = "Удаление услуги у тренера по ID тренера и ID услуги", description =  "Удаляет услугу у тренера")
+    @Operation(
+            summary = "Remove service from trainer",
+            description = "Removes an assigned service from a trainer using trainer and service identifiers"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Услуга у тренера успешно удалена"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Тренер не найден / услуга не найдена"
-            )
+            @ApiResponse(responseCode = "204", description = "Service successfully removed from trainer"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer or service not found")
     })
     @DeleteMapping("/{trainerId}/services/{serviceId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -176,7 +217,15 @@ public class TrainerController {
         service.deleteTrainerService(trainerId, serviceId);
     }
 
-    @Operation (summary = "Поиск тренеров", description =  "Ищет тренеров по имени или фамилии с поддержкой пагинации и сортировки")
+    @Operation(
+            summary = "Search trainers",
+            description = "Searches trainers by first or last name with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping("/search")
     public Page<TrainerResponse> searchTrainers(
             @RequestParam String query,

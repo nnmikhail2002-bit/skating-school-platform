@@ -27,26 +27,30 @@ public class StudentController {
         this.service = service;
     }
 
-    @Operation(summary = "Get the list of students", description = "Returns students with pagination and sorting")
+    @Operation(
+            summary = "Get all students",
+            description = "Returns students with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Students successfully returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Trainer or administrator role required")
+    })
     @GetMapping
     public Page<StudentResponse> getAllStudents(Pageable pageable) {
         return service.getAllStudents(pageable);
     }
 
-    @Operation(summary = "create student", description = "Creates Student")
+    @Operation(
+            summary = "Create student",
+            description = "Creates a new student profile"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Student created"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid student data"
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "Student with this phone number already exists"
-            )
+            @ApiResponse(responseCode = "201", description = "Student successfully created"),
+            @ApiResponse(responseCode = "400", description = "Invalid student data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "409", description = "Student with this phone number already exists")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -56,32 +60,30 @@ public class StudentController {
         return service.createStudent(request);
     }
 
-    @Operation(summary = "Get student by ID", description = "Returns a student by identifier")
+    @Operation(
+            summary = "Get student by ID",
+            description = "Returns a student by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Student found"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Student is not found"
-            )
+            @ApiResponse(responseCode = "200", description = "Student found"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Trainer or administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Student not found")
     })
     @GetMapping("/{studentId}")
     public StudentResponse getStudentById(@PathVariable Long studentId) {
         return service.getStudentById(studentId);
     }
 
-    @Operation(summary = "Get student by ID", description = "Returns a student by identifier")
+    @Operation(
+            summary = "Get current student profile",
+            description = "Returns the student profile linked to the authenticated account"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Student found"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Student is not found"
-            )
+            @ApiResponse(responseCode = "200", description = "Current student profile returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Student role required"),
+            @ApiResponse(responseCode = "404", description = "Student profile not found")
     })
     @GetMapping("/me")
     public StudentResponse getCurrentStudent(@AuthenticationPrincipal Jwt jwt) {
@@ -89,40 +91,32 @@ public class StudentController {
     }
 
 
-    @Operation (summary = "Update data student by ID", description = "Update fields student by his identifier")
+    @Operation(
+            summary = "Update student",
+            description = "Updates an existing student by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Student found and successfully updated"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid update data student"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Student is not found"
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "The specified phone number is already being used by another student"
-            )
+            @ApiResponse(responseCode = "200", description = "Student successfully updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid student data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Student not found"),
+            @ApiResponse(responseCode = "409", description = "Phone number is already used by another student")
     })
     @PutMapping("/{studentId}")
     public StudentResponse updateStudent(@PathVariable Long studentId, @Valid @RequestBody UpdateStudentRequest request){
         return service.updateStudent(studentId, request);
     }
 
-    @Operation (summary = "Delete student by Id", description =  "Deletes a student by identifier")
+    @Operation(
+            summary = "Delete student",
+            description = "Deletes a student by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Student successfully deleted"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Student is not found"
-            )
+            @ApiResponse(responseCode = "204", description = "Student successfully deleted"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Student not found")
     })
     @DeleteMapping("/{studentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -130,7 +124,15 @@ public class StudentController {
         service.deleteStudent(studentId);
     }
 
-    @Operation (summary = "Search students", description =  "Searches for students by first or last name, with support for pagination and sorting")
+    @Operation(
+            summary = "Search students",
+            description = "Searches students by first or last name with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Trainer or administrator role required")
+    })
     @GetMapping("/search")
     public Page<StudentResponse> searchStudents(
             @RequestParam String query,

@@ -13,5 +13,5 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Optional<Booking> findByStudent_IdAndTrainingSession_Id(Long studentId, Long trainingSessionId);
 
     Page<Booking> findByStudent_Id(Long student_Id, Pageable pageable);
-
+    Page<Booking> findByTrainingSession_Trainer_Id(Long trainerId, Pageable pageable);
 }

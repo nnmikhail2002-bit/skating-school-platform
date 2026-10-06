@@ -3,14 +3,12 @@ package com.skating.platform.backend.service;
 import com.skating.platform.backend.dto.trainingsession.request.CreateTrainingSessionRequest;
 import com.skating.platform.backend.dto.trainingsession.request.UpdateTrainingSessionRequest;
 import com.skating.platform.backend.dto.trainingsession.response.TrainingSessionResponse;
-import com.skating.platform.backend.entity.SchoolService;
-import com.skating.platform.backend.entity.Trainer;
-import com.skating.platform.backend.entity.TrainingSession;
-import com.skating.platform.backend.entity.TrainingSessionStatus;
+import com.skating.platform.backend.entity.*;
 import com.skating.platform.backend.exception.BadRequestException;
 import com.skating.platform.backend.exception.ConflictException;
 import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.mapper.TrainingSessionMapper;
+import com.skating.platform.backend.repository.AppUserRepository;
 import com.skating.platform.backend.repository.SchoolServiceRepository;
 import com.skating.platform.backend.repository.TrainerRepository;
 import com.skating.platform.backend.repository.TrainingSessionRepository;
@@ -27,12 +25,15 @@ public class TrainingSessionService {
     private final TrainerRepository trainerRepository;
     private final SchoolServiceRepository serviceRepository;
     private final TrainingSessionMapper mapper;
+    private final AppUserRepository appUserRepository;
 
-    public TrainingSessionService(TrainingSessionMapper mapper, TrainingSessionRepository repository, TrainerRepository trainerRepository, SchoolServiceRepository serviceRepository) {
+    public TrainingSessionService(TrainingSessionMapper mapper, TrainingSessionRepository repository, TrainerRepository trainerRepository,
+                                  SchoolServiceRepository serviceRepository, AppUserRepository appUserRepository) {
         this.mapper = mapper;
         this.repository = repository;
         this.trainerRepository = trainerRepository;
         this.serviceRepository = serviceRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     private void validateTime(LocalDateTime startTime, LocalDateTime endTime) {
@@ -76,6 +77,31 @@ public class TrainingSessionService {
                     "Trainer already has a training session at this time"
             );
         }
+    }
+
+
+    @Transactional(readOnly = true)
+    public Page<TrainingSessionResponse> getCurrentTrainingSessions(
+            String userEmail,
+            Pageable pageable
+    ) {
+
+        AppUser user = appUserRepository.findByEmail(userEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        Trainer trainer = user.getTrainer();
+
+        if (trainer == null) {
+            throw new ResourceNotFoundException(
+                    "Trainer profile not found"
+            );
+        }
+
+        return repository
+                .findByTrainer_Id(trainer.getId(), pageable)
+                .map(mapper::toResponse);
     }
 
     @Transactional

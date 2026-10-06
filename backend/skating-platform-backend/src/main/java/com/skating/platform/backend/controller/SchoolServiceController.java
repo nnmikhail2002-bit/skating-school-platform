@@ -27,22 +27,29 @@ public class SchoolServiceController {
         this.schoolServiceService = schoolServiceService;
     }
 
-    @Operation(summary = "Получить все услуги", description =  "Выводит все услуги")
+    @Operation(
+            summary = "Get all services",
+            description = "Returns school services with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Services successfully returned"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping
     public Page<SchoolServiceResponse> getAllServices(Pageable pageable){
         return schoolServiceService.getAllServices(pageable);
     }
 
-    @Operation(summary = "Создать услугу", description =  "Создает услугу")
+    @Operation(
+            summary = "Create service",
+            description = "Creates a new school service"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Услуга создана"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Некорректные данные услуги"
-            )
+            @ApiResponse(responseCode = "201", description = "Service successfully created"),
+            @ApiResponse(responseCode = "400", description = "Invalid service data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required")
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -52,52 +59,46 @@ public class SchoolServiceController {
         return schoolServiceService.createService(request);
     }
 
-    @Operation(summary = "Получить услугу по ID", description =  "Возвращает услугу по его идентификатору")
+    @Operation(
+            summary = "Get service by ID",
+            description = "Returns a school service by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Услуга найдена"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Услуга не найдена"
-            )
+            @ApiResponse(responseCode = "200", description = "Service found"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Service not found")
     })
     @GetMapping("/{serviceId}")
     public SchoolServiceResponse getServiceById(@PathVariable Long serviceId){
         return schoolServiceService.getServiceById(serviceId);
     }
 
-    @Operation(summary = "Обновить данные услуги по ID", description =  "Обновляет данные услуги")
+    @Operation(
+            summary = "Update service",
+            description = "Updates an existing school service by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "услуга найдена и успешно обновлена"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Некорректные данные для обновления услуги"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "услуга не найдена"
-            )
+            @ApiResponse(responseCode = "200", description = "Service successfully updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid service data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Service not found")
     })
     @PutMapping("/{serviceId}")
     public SchoolServiceResponse updateService(@PathVariable Long serviceId, @Valid @RequestBody UpdateSchoolServiceRequest request){
         return schoolServiceService.updateService(serviceId, request);
     }
 
-    @Operation (summary = "Удалить услугу по ID", description =  "Удаляет услугу по её идентификатору")
+    @Operation(
+            summary = "Delete service",
+            description = "Deletes a school service by its identifier"
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Услуга успешно удалена"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "услуга не найдена"
-            )
+            @ApiResponse(responseCode = "204", description = "Service successfully deleted"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Service not found")
     })
     @DeleteMapping("/{serviceId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -105,7 +106,15 @@ public class SchoolServiceController {
         schoolServiceService.deleteService(serviceId);
     }
 
-    @Operation (summary = "Поиск услуг", description =  "Ищет услуги по названию или типу с поддержкой пагинации и сортировки")
+    @Operation(
+            summary = "Search services",
+            description = "Searches services by name or type with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Search completed successfully"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping("/search")
     public Page<SchoolServiceResponse> searchServices(
             @RequestParam String query,
@@ -114,7 +123,15 @@ public class SchoolServiceController {
         return schoolServiceService.searchServices(query, pageable);
     }
 
-    @Operation (summary = "Фильтрация услуг", description =  "Фильтрует услуги по названию, типу, цене и активности с поддержкой пагинации и сортировки")
+    @Operation(
+            summary = "Filter services",
+            description = "Filters services by name, type, price range and active status with pagination and sorting"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Services successfully filtered"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping("/filter")
     public Page<SchoolServiceResponse> filterServices(
             @RequestParam(required = false) String name,

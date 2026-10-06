@@ -112,23 +112,95 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/api/bookings/trainer/me"
+                        ).hasRole("TRAINER")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
                                 "/api/bookings",
                                 "/api/bookings/*"
-                        ).hasAnyRole("TRAINER", "ADMIN")
-                        .requestMatchers(HttpMethod.GET,
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/training-sessions/me"
+                        ).hasRole("TRAINER")
+                        .requestMatchers(
+                                HttpMethod.GET,
                                 "/api/training-sessions",
                                 "/api/training-sessions/*"
                         ).hasAnyRole("STUDENT", "TRAINER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST,
+
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/training-sessions"
                         ).hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.PUT,
+                        .requestMatchers(
+                                HttpMethod.PUT,
                                 "/api/training-sessions/*"
                         ).hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.DELETE,
+                        .requestMatchers(
+                                HttpMethod.DELETE,
                                 "/api/training-sessions/*"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/trainers/me",
+                                "/api/trainers/me/services"
+                        ).hasRole("TRAINER")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/trainers",
+                                "/api/trainers/search",
+                                "/api/trainers/services",
+                                "/api/trainers/with-services",
+                                "/api/trainers/*",
+                                "/api/trainers/*/services"
+                        ).hasAnyRole("STUDENT", "TRAINER", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/trainers"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/trainers/*/services/*"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/trainers/*"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/trainers/*",
+                                "/api/trainers/*/services/*"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/services",
+                                "/api/services/search",
+                                "/api/services/filter",
+                                "/api/services/*"
+                        ).hasAnyRole("STUDENT", "TRAINER", "ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/services"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/services/*"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/services/*"
                         ).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
