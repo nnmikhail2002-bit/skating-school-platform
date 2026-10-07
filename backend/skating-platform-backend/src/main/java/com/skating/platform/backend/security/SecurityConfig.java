@@ -171,6 +171,11 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
                         .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/trainers/*/account"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/trainers/*"
                         ).hasRole("ADMIN")
@@ -202,6 +207,7 @@ public class SecurityConfig {
                                 HttpMethod.DELETE,
                                 "/api/services/*"
                         ).hasRole("ADMIN")
+                        
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

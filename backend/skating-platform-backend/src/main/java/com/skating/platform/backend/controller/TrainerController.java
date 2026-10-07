@@ -1,9 +1,12 @@
 package com.skating.platform.backend.controller;
 
+import com.skating.platform.backend.dto.appusers.request.CreateTrainerAccountRequest;
+import com.skating.platform.backend.dto.appusers.response.AppUserResponse;
 import com.skating.platform.backend.dto.trainer.request.CreateTrainerRequest;
 import com.skating.platform.backend.dto.trainer.response.TrainerResponse;
 import com.skating.platform.backend.dto.trainer.request.UpdateTrainerRequest;
 import com.skating.platform.backend.dto.trainerService.response.TrainerServiceResponse;
+import com.skating.platform.backend.service.AuthService;
 import com.skating.platform.backend.service.TrainerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,9 +26,36 @@ import org.springframework.data.domain.Pageable;
 @RequestMapping("/api/trainers")
 public class TrainerController {
     private final TrainerService service;
-    public TrainerController(TrainerService service){
+    private final AuthService authService;
+    public TrainerController(TrainerService service, AuthService authService){
         this.service = service;
+        this.authService = authService;
     }
+
+    @Operation(
+            summary = "Create trainer account",
+            description = "Creates an application account linked to an existing trainer profile"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Trainer account successfully created"),
+            @ApiResponse(responseCode = "400", description = "Invalid account data"),
+            @ApiResponse(responseCode = "401", description = "Authentication required"),
+            @ApiResponse(responseCode = "403", description = "Administrator role required"),
+            @ApiResponse(responseCode = "404", description = "Trainer not found"),
+            @ApiResponse(responseCode = "409", description = "Email is already in use or trainer already has an account")
+    })
+    @PostMapping("/{trainerId}/account")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AppUserResponse createTrainerAccount(
+            @PathVariable Long trainerId,
+            @Valid @RequestBody CreateTrainerAccountRequest request
+    ) {
+        return authService.createTrainerAccount(
+                trainerId,
+                request
+        );
+    }
+
 
     @Operation(
             summary = "Get all trainers",

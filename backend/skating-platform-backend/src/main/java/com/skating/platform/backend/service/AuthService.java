@@ -1,5 +1,6 @@
 package com.skating.platform.backend.service;
 
+import com.skating.platform.backend.dto.appusers.request.CreateTrainerAccountRequest;
 import com.skating.platform.backend.dto.appusers.request.LoginRequest;
 import com.skating.platform.backend.dto.appusers.request.RegisterStudentRequest;
 import com.skating.platform.backend.dto.appusers.response.AppUserResponse;
@@ -7,11 +8,14 @@ import com.skating.platform.backend.dto.appusers.response.AuthResponse;
 import com.skating.platform.backend.entity.AppUser;
 import com.skating.platform.backend.entity.Role;
 import com.skating.platform.backend.entity.Student;
+import com.skating.platform.backend.entity.Trainer;
 import com.skating.platform.backend.exception.ConflictException;
+import com.skating.platform.backend.exception.ResourceNotFoundException;
 import com.skating.platform.backend.exception.UnauthorizedException;
 import com.skating.platform.backend.mapper.AppUserMapper;
 import com.skating.platform.backend.repository.AppUserRepository;
 import com.skating.platform.backend.repository.StudentRepository;
+import com.skating.platform.backend.repository.TrainerRepository;
 import com.skating.platform.backend.security.JwtService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,13 +28,16 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final JwtService jwtService;
     private final StudentRepository studentRepository;
+    private final TrainerRepository trainerRepository;
 
-    public AuthService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, AppUserMapper appUserMapper, JwtService jwtService, StudentRepository studentRepository) {
+    public AuthService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder, AppUserMapper appUserMapper, JwtService jwtService,
+                       TrainerRepository trainerRepository, StudentRepository studentRepository) {
         this.appUserMapper = appUserMapper;
         this.passwordEncoder = passwordEncoder;
         this.appUserRepository = appUserRepository;
         this.jwtService = jwtService;
         this.studentRepository = studentRepository;
+        this.trainerRepository = trainerRepository;
     }
 
     @Transactional
@@ -87,4 +94,50 @@ public class AuthService {
 
     }
 
+    @Transactional
+    public AppUserResponse createTrainerAccount(Long trainerId, CreateTrainerAccountRequest request) {
+
+        String email = request.getEmail()
+                .trim()
+                .toLowerCase();
+
+        if (appUserRepository.existsByEmail(email)) {
+            throw new ConflictException(
+                    "Email is already in use"
+            );
+        }
+
+        Trainer trainer = trainerRepository.findById(trainerId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Trainer not found"
+                        )
+                );
+
+        if (appUserRepository.existsByTrainer_Id(trainerId)) {
+            throw new ConflictException(
+                    "Trainer already has an account"
+            );
+        }
+
+        AppUser user = new AppUser();
+
+        user.setEmail(email);
+
+        user.setPassword(
+                passwordEncoder.encode(
+                        request.getPassword()
+                )
+        );
+
+        user.setRole(Role.TRAINER);
+
+        user.setTrainer(trainer);
+
+        user.setActive(true);
+
+        AppUser saved = appUserRepository.save(user);
+
+        return appUserMapper.toResponse(saved);
+    }
 }
