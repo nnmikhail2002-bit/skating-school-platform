@@ -57,10 +57,6 @@ public class AuthController {
                     description = "Login successful"
             ),
             @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid login request data"
-            ),
-            @ApiResponse(
                     responseCode = "401",
                     description = "Invalid email or password"
             )
