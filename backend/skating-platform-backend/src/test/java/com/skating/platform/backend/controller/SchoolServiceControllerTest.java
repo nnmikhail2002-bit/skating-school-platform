@@ -44,8 +44,6 @@ class SchoolServiceControllerTest {
     private SchoolServiceService schoolServiceService;
 
 
-    // ---------- HELPERS ----------
-
     private RequestPostProcessor userJwt(String email, String role) {
 
         return jwt()
@@ -106,14 +104,10 @@ class SchoolServiceControllerTest {
     }
 
 
-    // ---------- GET ALL ----------
-
     @Test
     void shouldGetAllServicesSuccessfully() throws Exception {
 
-        when(schoolServiceService.getAllServices(
-                any(Pageable.class)
-        )).thenReturn(page());
+        when(schoolServiceService.getAllServices(any(Pageable.class))).thenReturn(page());
 
         mockMvc.perform(
                         get("/api/services")
@@ -144,8 +138,6 @@ class SchoolServiceControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-
-    // ---------- GET BY ID ----------
 
     @Test
     void shouldGetServiceByIdSuccessfully() throws Exception {
@@ -179,11 +171,7 @@ class SchoolServiceControllerTest {
     void shouldReturn404WhenServiceNotFound() throws Exception {
 
         when(schoolServiceService.getServiceById(1L))
-                .thenThrow(
-                        new ResourceNotFoundException(
-                                "Service not found"
-                        )
-                );
+                .thenThrow(new ResourceNotFoundException("Service not found"));
 
         mockMvc.perform(
                         get("/api/services/1")
@@ -200,14 +188,11 @@ class SchoolServiceControllerTest {
     }
 
 
-    // ---------- CREATE ----------
-
     @Test
     void shouldCreateServiceSuccessfully() throws Exception {
 
-        when(schoolServiceService.createService(
-                any(CreateSchoolServiceRequest.class)
-        )).thenReturn(response());
+        when(schoolServiceService.createService(any(CreateSchoolServiceRequest.class)))
+                .thenReturn(response());
 
         mockMvc.perform(
                         post("/api/services")
@@ -273,7 +258,6 @@ class SchoolServiceControllerTest {
     }
 
 
-    // ---------- UPDATE ----------
 
     @Test
     void shouldUpdateServiceSuccessfully() throws Exception {
@@ -288,10 +272,8 @@ class SchoolServiceControllerTest {
                         true
                 );
 
-        when(schoolServiceService.updateService(
-                eq(1L),
-                any(UpdateSchoolServiceRequest.class)
-        )).thenReturn(updatedResponse);
+        when(schoolServiceService.updateService(eq(1L), any(UpdateSchoolServiceRequest.class)))
+                .thenReturn(updatedResponse);
 
         mockMvc.perform(
                         put("/api/services/1")
@@ -344,14 +326,8 @@ class SchoolServiceControllerTest {
     @Test
     void shouldReturn404WhenUpdatingUnknownService() throws Exception {
 
-        when(schoolServiceService.updateService(
-                eq(1L),
-                any(UpdateSchoolServiceRequest.class)
-        )).thenThrow(
-                new ResourceNotFoundException(
-                        "Service not found"
-                )
-        );
+        when(schoolServiceService.updateService(eq(1L), any(UpdateSchoolServiceRequest.class)))
+                .thenThrow(new ResourceNotFoundException("Service not found"));
 
         mockMvc.perform(
                         put("/api/services/1")
@@ -385,8 +361,6 @@ class SchoolServiceControllerTest {
     }
 
 
-    // ---------- DELETE ----------
-
     @Test
     void shouldDeleteServiceSuccessfully() throws Exception {
 
@@ -403,11 +377,7 @@ class SchoolServiceControllerTest {
     @Test
     void shouldReturn404WhenDeletingUnknownService() throws Exception {
 
-        doThrow(
-                new ResourceNotFoundException(
-                        "Service not found"
-                )
-        )
+        doThrow(new ResourceNotFoundException("Service not found"))
                 .when(schoolServiceService)
                 .deleteService(1L);
 
@@ -439,15 +409,10 @@ class SchoolServiceControllerTest {
     }
 
 
-    // ---------- SEARCH ----------
-
     @Test
     void shouldSearchServicesSuccessfully() throws Exception {
 
-        when(schoolServiceService.searchServices(
-                eq("group"),
-                any(Pageable.class)
-        )).thenReturn(page());
+        when(schoolServiceService.searchServices(eq("group"), any(Pageable.class))).thenReturn(page());
 
         mockMvc.perform(
                         get("/api/services/search")
@@ -478,9 +443,6 @@ class SchoolServiceControllerTest {
                 )
                 .andExpect(status().isBadRequest());
     }
-
-
-    // ---------- FILTER ----------
 
     @Test
     void shouldFilterServicesSuccessfully() throws Exception {
