@@ -150,7 +150,7 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(trainingSessionRepository.findById(10L))
+        when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
 
         when(repository
@@ -168,12 +168,10 @@ class BookingServiceTest {
                 .thenReturn(response);
 
 
-        BookingResponse result =
-                bookingService.createBooking(request, email);
+        BookingResponse result = bookingService.createBooking(request, email);
 
 
-        ArgumentCaptor<Booking> captor =
-                ArgumentCaptor.forClass(Booking.class);
+        ArgumentCaptor<Booking> captor = ArgumentCaptor.forClass(Booking.class);
 
         verify(repository).save(captor.capture());
 
@@ -191,8 +189,9 @@ class BookingServiceTest {
 
         assertNotNull(savedBooking.getBookedAt());
 
-        verify(repository)
-                .countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED);
+        verify(trainingSessionRepository).findByIdForUpdate(10L);
+
+        verify(repository).countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED);
     }
 
 
@@ -217,7 +216,7 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(trainingSessionRepository.findById(10L))
+        when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
 
         when(repository
@@ -279,7 +278,7 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(trainingSessionRepository.findById(10L))
+        when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
 
         when(repository
@@ -322,9 +321,8 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(trainingSessionRepository.findById(10L))
+        when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
-
 
         BadRequestException exception =
                 assertThrows(BadRequestException.class,
@@ -358,7 +356,7 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(trainingSessionRepository.findById(10L))
+        when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
 
         when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
@@ -459,7 +457,7 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(trainingSessionRepository.findById(10L))
+        when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.empty());
 
 
