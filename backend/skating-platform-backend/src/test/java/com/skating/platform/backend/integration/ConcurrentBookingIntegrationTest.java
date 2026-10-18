@@ -19,6 +19,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.LocalDateTime;
@@ -26,8 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 @Testcontainers
@@ -90,11 +90,22 @@ class ConcurrentBookingIntegrationTest {
 
                 blocker.setAutoCommit(false);
 
-                try (Statement statement = blocker.createStatement()) {
-                    statement.execute(
-                            "LOCK TABLE public.bookings IN SHARE MODE"
-                    );
+
+                try (PreparedStatement statement = blocker.prepareStatement(
+                        """
+                        SELECT id
+                        FROM public.training_sessions
+                        WHERE id = ?
+                        FOR UPDATE
+                        """
+                )) {
+                    statement.setLong(1, session.getId());
+
+                    try (ResultSet result = statement.executeQuery()) {
+                        assertTrue(result.next());
+                    }
                 }
+
 
                 Future<BookingResponse> first = executor.submit(() -> {
                     start.await();
@@ -106,13 +117,20 @@ class ConcurrentBookingIntegrationTest {
                     return bookingService.createBooking(request, secondEmail);
                 });
 
+
                 start.countDown();
 
                 try {
-                    awaitTwoBlockedInserts(blocker);
+                    try (Connection observer = dataSource.getConnection()) {
+
+                        observer.setAutoCommit(true);
+
+                        awaitTwoBlockedTransactions(observer);
+                    }
                 } finally {
                     blocker.rollback();
                 }
+
 
                 int successfulBookings = 0;
                 int conflicts = 0;
@@ -136,6 +154,13 @@ class ConcurrentBookingIntegrationTest {
                                 BookingStatus.BOOKED
                         );
 
+                System.out.printf(
+                        "Successful: %d, Conflicts: %d, Booked: %d%n",
+                        successfulBookings,
+                        conflicts,
+                        bookedCount
+                );
+
                 assertEquals(1, successfulBookings);
                 assertEquals(1, conflicts);
                 assertEquals(1L, bookedCount);
@@ -146,19 +171,25 @@ class ConcurrentBookingIntegrationTest {
     }
 
 
-    private void awaitTwoBlockedInserts(Connection connection)
+
+
+    private void awaitTwoBlockedTransactions(Connection connection)
             throws Exception {
 
         long deadline = System.nanoTime()
                 + TimeUnit.SECONDS.toNanos(15);
 
         String sql = """
-                SELECT COUNT(*)
-                FROM pg_locks
-                WHERE relation = 'public.bookings'::regclass
-                  AND mode = 'RowExclusiveLock'
-                  AND granted = false
-                """;
+            SELECT COUNT(*)
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid <> pg_backend_pid()
+              AND backend_type = 'client backend'
+              AND state = 'active'
+              AND wait_event_type = 'Lock'
+            """;
+
+        long waitingTransactions = 0;
 
         while (System.nanoTime() < deadline) {
 
@@ -166,8 +197,9 @@ class ConcurrentBookingIntegrationTest {
                  ResultSet result = statement.executeQuery(sql)) {
 
                 result.next();
+                waitingTransactions = result.getLong(1);
 
-                if (result.getLong(1) >= 2L) {
+                if (waitingTransactions >= 2) {
                     return;
                 }
             }
@@ -175,8 +207,13 @@ class ConcurrentBookingIntegrationTest {
             Thread.sleep(50);
         }
 
-        fail("Both booking INSERT operations did not reach the lock");
+        fail(
+                "Expected two concurrent transactions waiting for a lock. " +
+                        "Actual: " + waitingTransactions
+        );
     }
+
+
 
 
     private void createStudentAccount(String email, String phone) {
