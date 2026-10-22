@@ -1,0 +1,44 @@
+
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - feature/tests
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend/skating-platform-backend
+
+    env:
+      JWT_SECRET: '0123456789abcdef0123456789abcdef'
+      POSTGRES_DB: 'ci_unused'
+      POSTGRES_USER: 'ci_unused'
+      POSTGRES_PASSWORD: 'ci_unused'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/skating-platform-backend/pom.xml
+
+      - name: Build and run tests
+        run: bash ./mvnw -B clean verify
