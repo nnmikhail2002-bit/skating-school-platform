@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import java.util.Optional;
 import java.time.LocalDateTime;
 
 public interface TrainingSessionRepository extends JpaRepository<TrainingSession, Long> {
@@ -26,5 +29,16 @@ public interface TrainingSessionRepository extends JpaRepository<TrainingSession
             @Param("excludeId") Long excludeId,
             @Param("cancelledStatus") TrainingSessionStatus cancelledStatus
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT ts
+        FROM TrainingSession ts
+        WHERE ts.id = :id
+        """)
+    Optional<TrainingSession> findByIdForUpdate(
+            @Param("id") Long id
+    );
+
     Page<TrainingSession> findByTrainer_Id(Long trainerId, Pageable pageable);
 }

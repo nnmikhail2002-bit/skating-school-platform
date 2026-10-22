@@ -14,13 +14,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 @WebMvcTest(AuthController.class)
 class AuthControllerTest {
@@ -46,12 +45,15 @@ class AuthControllerTest {
                 .thenReturn(response);
 
 
-        String json = """
-                {
-                   "email": "student@test.com",
-                   "password": "password123"
-                }
-                """;
+       String json = """
+        {
+           "firstName": "Михаил",
+           "lastName": "Test",
+           "phone": "+79990000001",
+           "email": "student@test.com",
+           "password": "password123"
+        }
+        """;
         mockMvc.perform(
                         post("/api/auth/register")
                                 .contentType(APPLICATION_JSON)
@@ -110,7 +112,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.message")
                         .value("Email is already in use"));
-        verifyNoInteractions(authService);
+        verify(authService).register(any());
     }
 
     @Test

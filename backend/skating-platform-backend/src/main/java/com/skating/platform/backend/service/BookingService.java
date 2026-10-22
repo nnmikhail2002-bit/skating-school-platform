@@ -31,10 +31,12 @@ public class BookingService {
         this.appUserRepository = appUserRepository;
     }
 
-    private TrainingSession getTrainingSessionById(Long id) {
-        return trainingSessionRepository.findById(id)
+    private TrainingSession getTrainingSessionByIdForUpdate(Long id) {
+        return trainingSessionRepository.findByIdForUpdate(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Training session not found")
+                        new ResourceNotFoundException(
+                                "Training session not found"
+                        )
                 );
     }
 
@@ -123,7 +125,7 @@ public class BookingService {
             );
         }
 
-        TrainingSession session = getTrainingSessionById(request.getTrainingSessionId());
+        TrainingSession session = getTrainingSessionByIdForUpdate(request.getTrainingSessionId());
         validateSession(session);
         Optional<Booking> existingBooking = repository.findByStudent_IdAndTrainingSession_Id(student.getId(), session.getId());
         if (existingBooking.isPresent() && existingBooking.get().getStatus() == BookingStatus.BOOKED) {
