@@ -1,3 +1,4 @@
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,13 +13,35 @@ services:
       - "5432:5432"
 
     volumes:
-       - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
     healthcheck:
-        test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
-        interval: 5s
-        timeout: 3s
-        retries: 10
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  payments-postgres:
+    image: postgres:16-alpine
+    container_name: skating-payments-postgres
+
+    environment:
+      POSTGRES_DB: ${PAYMENTS_POSTGRES_DB}
+      POSTGRES_USER: ${PAYMENTS_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${PAYMENTS_POSTGRES_PASSWORD}
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - payments_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PAYMENTS_POSTGRES_USER} -d ${PAYMENTS_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   postgres_data:
+  payments_postgres_data:
