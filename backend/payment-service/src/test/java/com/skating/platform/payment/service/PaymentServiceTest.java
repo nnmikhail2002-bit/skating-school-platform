@@ -14,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.jdbc.core.JdbcTemplate;
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -27,6 +27,9 @@ class PaymentServiceTest {
 
     @Mock
     private PaymentTransactionRepository repository;
+
+    @Mock
+    private JdbcTemplate jdbcTemplate;
 
     @InjectMocks
     private PaymentService paymentService;
