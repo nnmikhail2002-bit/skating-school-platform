@@ -31,11 +31,24 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.skating.platform.payment.entity.PaymentStatus;
+import com.skating.platform.payment.gateway.PaymentGateway;
+import com.skating.platform.payment.gateway.PaymentGatewayResult;
+
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import java.math.BigDecimal;
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
 class PaymentIntegrationTest {
+
+    @MockitoBean
+    private PaymentGateway paymentGateway;
 
     @Container
     @ServiceConnection
@@ -49,8 +62,71 @@ class PaymentIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+
         repository.deleteAll();
+
+        when(paymentGateway.processPayment(
+                anyLong(),
+                any(BigDecimal.class),
+                anyString()
+        )).thenReturn(new PaymentGatewayResult(
+                true,
+                "mock-payment"
+        ));
     }
+
+
+    @Test
+    void gatewayThrows_shouldPersistPendingPaymentAndNotRetry() throws Exception {
+
+        doThrow(new IllegalStateException("Gateway timeout"))
+                .when(paymentGateway)
+                .processPayment(
+                        anyLong(),
+                        any(BigDecimal.class),
+                        anyString()
+                );
+
+        String json = requestJson(
+                300L,
+                "1500.00",
+                "key-gateway-error"
+        );
+
+        MvcResult firstResult = mockMvc.perform(
+                        post("/api/payments")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andReturn();
+
+        Number paymentId = JsonPath.read(firstResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(post("/api/payments")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(paymentId.intValue()))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+
+        assertEquals(1, repository.count());
+
+        PaymentTransaction saved = repository.findByIdempotencyKey("key-gateway-error")
+                .orElseThrow();
+
+        assertEquals(paymentId.longValue(), saved.getId());
+        assertEquals(PaymentStatus.PENDING, saved.getStatus());
+
+        verify(paymentGateway, times(1)).processPayment(
+                anyLong(),
+                eq(new BigDecimal("1500.00")),
+                eq("RUB")
+        );
+    }
+
 
     private String requestJson(long orderId, String amount, String key) {
         return """
@@ -70,7 +146,7 @@ class PaymentIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(100L, "1500.00", "key-001")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
 
         assertEquals(1, repository.count());
 

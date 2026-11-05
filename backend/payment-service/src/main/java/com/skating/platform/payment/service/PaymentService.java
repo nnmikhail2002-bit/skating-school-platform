@@ -5,6 +5,8 @@ import com.skating.platform.payment.dto.CreatePaymentRequest;
 import com.skating.platform.payment.dto.PaymentResponse;
 import com.skating.platform.payment.entity.PaymentStatus;
 import com.skating.platform.payment.entity.PaymentTransaction;
+import com.skating.platform.payment.gateway.PaymentGateway;
+import com.skating.platform.payment.gateway.PaymentGatewayResult;
 import com.skating.platform.payment.repository.PaymentTransactionRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -16,15 +18,17 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.PreparedStatement;
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
     private final PaymentTransactionRepository repository;
-
     private final JdbcTemplate jdbcTemplate;
+    private final PaymentGateway paymentGateway;
 
     private void lockIdempotencyKey(String key) {
 
@@ -46,7 +50,9 @@ public class PaymentService {
     public PaymentResponse createPayment(CreatePaymentRequest request) {
 
         lockIdempotencyKey(request.idempotencyKey());
-        var existing = repository.findByIdempotencyKey(request.idempotencyKey());
+
+        Optional<PaymentTransaction> existing =
+                repository.findByIdempotencyKey(request.idempotencyKey());
 
         if (existing.isPresent()) {
             PaymentTransaction payment = existing.get();
@@ -74,7 +80,33 @@ public class PaymentService {
 
         PaymentTransaction saved = repository.saveAndFlush(payment);
 
-        return toResponse(saved);
+        PaymentGatewayResult gatewayResult;
+
+        try {
+            gatewayResult = paymentGateway.processPayment(
+                    saved.getId(),
+                    saved.getAmount(),
+                    saved.getCurrency()
+            );
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Payment gateway error for paymentId={}. Payment remains PENDING.",
+                    saved.getId(),
+                    exception
+            );
+
+            return toResponse(saved);
+        }
+
+        if (gatewayResult.successful()) {
+            saved.setStatus(PaymentStatus.SUCCEEDED);
+        } else {
+            saved.setStatus(PaymentStatus.FAILED);
+        }
+
+        PaymentTransaction completed = repository.saveAndFlush(saved);
+
+        return toResponse(completed);
     }
 
     @Transactional(readOnly = true)
