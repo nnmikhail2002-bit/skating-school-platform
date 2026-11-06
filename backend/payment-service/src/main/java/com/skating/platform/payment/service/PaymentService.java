@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.sql.PreparedStatement;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -98,11 +99,9 @@ public class PaymentService {
             return toResponse(saved);
         }
 
-        if (gatewayResult.successful()) {
-            saved.setStatus(PaymentStatus.SUCCEEDED);
-        } else {
-            saved.setStatus(PaymentStatus.FAILED);
-        }
+        saved.setStatus(gatewayResult.status());
+
+        saved.setGatewayReference(gatewayResult.providerReference());
 
         PaymentTransaction completed = repository.saveAndFlush(saved);
 
@@ -119,6 +118,43 @@ public class PaymentService {
                 ));
 
         return toResponse(payment);
+    }
+
+    public void reconcilePendingPayments() {
+
+        List<PaymentTransaction> pendingPayments = repository.findByStatusAndGatewayReferenceIsNotNull(PaymentStatus.PENDING);
+
+        for (PaymentTransaction payment : pendingPayments) {
+
+            try {
+                PaymentStatus gatewayStatus = paymentGateway.checkPaymentStatus(payment.getGatewayReference());
+
+                if (gatewayStatus == PaymentStatus.PENDING) {
+                    continue;
+                }
+
+                int updatedRows = repository.updateStatusIfCurrentStatus(
+                        payment.getId(),
+                        PaymentStatus.PENDING,
+                        gatewayStatus
+                );
+
+                if (updatedRows == 1) {
+                    log.info(
+                            "Payment status updated. paymentId={}, status={}",
+                            payment.getId(),
+                            gatewayStatus
+                    );
+                }
+
+            } catch (RuntimeException exception) {
+                log.error(
+                        "Failed to check payment status. paymentId={}",
+                        payment.getId(),
+                        exception
+                );
+            }
+        }
     }
 
     private PaymentResponse toResponse(PaymentTransaction payment) {

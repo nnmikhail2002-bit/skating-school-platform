@@ -64,7 +64,7 @@ class PaymentServiceTest {
                 new BigDecimal("1500.00"),
                 "RUB"
         )).thenReturn(new PaymentGatewayResult(
-                true,
+                PaymentStatus.SUCCEEDED,
                 "mock-payment-10"
         ));
 
@@ -110,7 +110,7 @@ class PaymentServiceTest {
                 new BigDecimal("1500.00"),
                 "RUB"
         )).thenReturn(new PaymentGatewayResult(
-                false,
+                PaymentStatus.FAILED,
                 null
         ));
 

@@ -1,17 +1,17 @@
-
 package com.skating.platform.payment.gateway;
 
+import com.skating.platform.payment.entity.PaymentStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MockPaymentGatewayTest {
 
     @Test
-    void processPayment_shouldReturnSuccessfulResult() {
+    void processPayment_shouldReturnPendingResult() {
+
         PaymentGateway gateway = new MockPaymentGateway();
 
         PaymentGatewayResult result = gateway.processPayment(
@@ -20,7 +20,17 @@ class MockPaymentGatewayTest {
                 "RUB"
         );
 
-        assertTrue(result.successful());
+        assertEquals(PaymentStatus.PENDING, result.status());
         assertEquals("mock-payment-42", result.providerReference());
+    }
+
+    @Test
+    void checkPaymentStatus_shouldReturnSucceeded() {
+
+        PaymentGateway gateway = new MockPaymentGateway();
+
+        PaymentStatus status = gateway.checkPaymentStatus("mock-payment-42");
+
+        assertEquals(PaymentStatus.SUCCEEDED, status);
     }
 }

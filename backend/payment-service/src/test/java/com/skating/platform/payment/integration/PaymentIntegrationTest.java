@@ -42,7 +42,7 @@ import java.math.BigDecimal;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "payment.reconciliation.enabled=false")
 @AutoConfigureMockMvc
 @Testcontainers
 class PaymentIntegrationTest {
@@ -70,7 +70,7 @@ class PaymentIntegrationTest {
                 any(BigDecimal.class),
                 anyString()
         )).thenReturn(new PaymentGatewayResult(
-                true,
+                PaymentStatus.SUCCEEDED,
                 "mock-payment"
         ));
     }
@@ -155,6 +155,7 @@ class PaymentIntegrationTest {
 
         assertEquals(100L, saved.getOrderId());
         assertEquals("RUB", saved.getCurrency());
+        assertEquals("mock-payment", saved.getGatewayReference());
     }
 
     @Test

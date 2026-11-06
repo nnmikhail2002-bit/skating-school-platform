@@ -1,6 +1,6 @@
-
 package com.skating.platform.payment.gateway;
 
+import com.skating.platform.payment.entity.PaymentStatus;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -15,8 +15,13 @@ public class MockPaymentGateway implements PaymentGateway {
             String currency
     ) {
         return new PaymentGatewayResult(
-                true,
+                PaymentStatus.PENDING,
                 "mock-payment-" + paymentId
         );
+    }
+
+    @Override
+    public PaymentStatus checkPaymentStatus(String providerReference) {
+        return PaymentStatus.SUCCEEDED;
     }
 }
