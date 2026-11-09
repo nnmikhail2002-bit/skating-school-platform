@@ -31,7 +31,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
+import java.math.BigDecimal;
 
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
@@ -97,6 +97,14 @@ class BookingServiceTest {
     private TrainingSession scheduledSession() {
         TrainingSession session = new TrainingSession();
 
+        SchoolService service = new SchoolService(
+                "Individual skating",
+                "Test service",
+                new BigDecimal("2500.00"),
+                "INDIVIDUAL"
+        );
+
+        session.setService(service);
         session.setId(10L);
         session.setStatus(TrainingSessionStatus.SCHEDULED);
         session.setCapacity(2);
@@ -192,6 +200,12 @@ class BookingServiceTest {
         verify(trainingSessionRepository).findByIdForUpdate(10L);
 
         verify(repository).countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED);
+        assertEquals(
+                new BigDecimal("2500.00"),
+                savedBooking.getAmount()
+        );
+
+        assertEquals("RUB", savedBooking.getCurrency());
     }
 
 

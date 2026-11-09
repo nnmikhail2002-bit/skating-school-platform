@@ -83,10 +83,11 @@ class DatabaseIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Test
-    void shouldApplyLiquibaseMigrations() throws Exception {
 
-        String sql = """
+    @Test
+    void shouldApplyLiquibaseMigrations() {
+
+        String tablesSql = """
                 SELECT COUNT(*)
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
@@ -101,14 +102,31 @@ class DatabaseIntegrationTest {
                   )
                 """;
 
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery(sql)) {
+        Long tableCount = jdbcTemplate.queryForObject(
+                tablesSql,
+                Long.class
+        );
 
-            assertTrue(result.next());
+        assertEquals(7L, tableCount);
 
-            assertEquals(7L, result.getLong(1));
-        }
+        String columnsSql = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'bookings'
+                  AND column_name IN (
+                      'amount',
+                      'currency',
+                      'payment_attempt_id'
+                  )
+                """;
+
+        Long paymentColumnsCount = jdbcTemplate.queryForObject(
+                columnsSql,
+                Long.class
+        );
+
+        assertEquals(3L, paymentColumnsCount);
     }
 
 
@@ -313,6 +331,12 @@ class DatabaseIntegrationTest {
         long bookedCount = bookingRepository.countByTrainingSession_IdAndStatus(session.getId(), BookingStatus.BOOKED);
 
         assertEquals(1L, bookedCount);
+        assertEquals(
+                new BigDecimal("2500.00"),
+                savedBooking.getAmount()
+        );
+
+        assertEquals("RUB", savedBooking.getCurrency());
 
     }
 
@@ -405,19 +429,16 @@ class DatabaseIntegrationTest {
 
         String email = "student@test.com";
 
-        Student student =
-                createStudentAccount(email, "+79991111111");
+        Student student = createStudentAccount(email, "+79991111111");
 
         TrainingSession session = createScheduledSession(1);
 
         CreateBookingRequest request = new CreateBookingRequest();
         request.setTrainingSessionId(session.getId());
 
-        BookingResponse original =
-                bookingService.createBooking(request, email);
+        BookingResponse original = bookingService.createBooking(request, email);
 
-        BookingResponse cancelled =
-                bookingService.cancelBooking(request, email);
+        BookingResponse cancelled = bookingService.cancelBooking(request, email);
 
         assertEquals(BookingStatus.CANCELLED, cancelled.getStatus());
         assertEquals(original.getId(), cancelled.getId());
@@ -441,16 +462,15 @@ class DatabaseIntegrationTest {
     }
 
 
-
     @Test
     @Transactional
     void shouldRejectDuplicateUserEmailInDatabase() {
 
         jdbcTemplate.update(
                 """
-                INSERT INTO users (email, password, role, active)
-                VALUES (?, ?, ?, ?)
-                """,
+                        INSERT INTO users (email, password, role, active)
+                        VALUES (?, ?, ?, ?)
+                        """,
                 "duplicate@test.com",
                 "test-hash",
                 "STUDENT",
@@ -461,9 +481,9 @@ class DatabaseIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update(
                         """
-                        INSERT INTO users (email, password, role, active)
-                        VALUES (?, ?, ?, ?)
-                        """,
+                                INSERT INTO users (email, password, role, active)
+                                VALUES (?, ?, ?, ?)
+                                """,
                         "duplicate@test.com",
                         "another-hash",
                         "STUDENT",
@@ -479,10 +499,10 @@ class DatabaseIntegrationTest {
 
         jdbcTemplate.update(
                 """
-                INSERT INTO students
-                    (first_name, last_name, phone, email, active)
-                VALUES (?, ?, ?, ?, ?)
-                """,
+                        INSERT INTO students
+                            (first_name, last_name, phone, email, active)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
                 "Mikhail",
                 "Ivanov",
                 "+79990001111",
@@ -494,10 +514,10 @@ class DatabaseIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update(
                         """
-                        INSERT INTO students
-                            (first_name, last_name, phone, email, active)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
+                                INSERT INTO students
+                                    (first_name, last_name, phone, email, active)
+                                VALUES (?, ?, ?, ?, ?)
+                                """,
                         "Petr",
                         "Sidorov",
                         "+79990001111",
@@ -530,14 +550,16 @@ class DatabaseIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update(
                         """
-                        INSERT INTO bookings
-                            (student_id, training_session_id, booked_at, status)
-                        VALUES (?, ?, ?, ?)
-                        """,
+                                    INSERT INTO bookings
+                                                            (student_id, training_session_id, booked_at, status, amount, currency)
+                                                        VALUES (?, ?, ?, ?, ?, ?)
+                                """,
                         student.getId(),
                         session.getId(),
                         LocalDateTime.now(),
-                        "BOOKED"
+                        "BOOKED",
+                        new BigDecimal("2500.00"),
+                        "RUB"
                 )
         );
     }

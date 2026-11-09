@@ -143,6 +143,8 @@ public class BookingService {
         }
         validateCapacity(session);
         booking.setStatus(BookingStatus.BOOKED);
+        booking.setAmount(session.getService().getPrice());
+        booking.setCurrency("RUB");
         booking.setBookedAt(LocalDateTime.now());
         Booking saved = repository.save(booking);
         return mapper.toResponse(saved);

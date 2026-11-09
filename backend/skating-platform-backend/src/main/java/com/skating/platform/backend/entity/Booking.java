@@ -7,7 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-
+import java.math.BigDecimal;
+import java.util.UUID;
 @Entity
 @Table(name = "bookings")
 @Getter
@@ -35,4 +36,12 @@ public class Booking {
     @Column(name = "booked_at", nullable = false)
     private LocalDateTime bookedAt;
 
+    @Column(name = "amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal amount;
+
+    @Column(name = "currency", nullable = false, length = 3)
+    private String currency;
+
+    @Column(name = "payment_attempt_id")
+    private UUID paymentAttemptId;
 }
