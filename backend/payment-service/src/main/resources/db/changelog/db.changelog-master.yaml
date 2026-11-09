@@ -1,3 +1,6 @@
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-create-payment-transactions.sql
+
+  - include:
+      file: db/changelog/changes/2026-11-06-create-outbox-events.yaml

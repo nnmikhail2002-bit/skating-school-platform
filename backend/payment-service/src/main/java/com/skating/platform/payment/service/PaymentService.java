@@ -16,7 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.skating.platform.payment.dto.PaymentEventPayload;
+import com.skating.platform.payment.entity.OutboxEvent;
+import com.skating.platform.payment.repository.OutboxEventRepository;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 import java.sql.PreparedStatement;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +35,8 @@ public class PaymentService {
     private final PaymentTransactionRepository repository;
     private final JdbcTemplate jdbcTemplate;
     private final PaymentGateway paymentGateway;
+    private final OutboxEventRepository outboxEventRepository;
+    private final JsonMapper jsonMapper;
 
     private void lockIdempotencyKey(String key) {
 
@@ -47,13 +54,62 @@ public class PaymentService {
         });
     }
 
+    private void saveOutboxEvent(
+            PaymentTransaction payment,
+            String eventType
+    ) {
+
+        PaymentEventPayload payload = new PaymentEventPayload(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getStatus(),
+                payment.getGatewayReference(),
+                payment.getCreatedAt()
+        );
+
+        String jsonPayload;
+
+        try {
+            jsonPayload = jsonMapper.writeValueAsString(payload);
+
+        } catch (JacksonException exception) {
+
+            throw new IllegalStateException(
+                    "Failed to serialize payment event",
+                    exception
+            );
+        }
+
+        OutboxEvent event = new OutboxEvent();
+
+        event.setAggregateType("PAYMENT");
+        event.setAggregateId(payment.getId().toString());
+        event.setEventType(eventType);
+        event.setPayload(jsonPayload);
+
+        outboxEventRepository.save(event);
+    }
+
+    private PaymentResponse toResponse(PaymentTransaction payment) {
+
+        return new PaymentResponse(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getStatus(),
+                payment.getCreatedAt()
+        );
+    }
+
     @Transactional
     public PaymentResponse createPayment(CreatePaymentRequest request) {
 
         lockIdempotencyKey(request.idempotencyKey());
 
-        Optional<PaymentTransaction> existing =
-                repository.findByIdempotencyKey(request.idempotencyKey());
+        Optional<PaymentTransaction> existing = repository.findByIdempotencyKey(request.idempotencyKey());
 
         if (existing.isPresent()) {
             PaymentTransaction payment = existing.get();
@@ -80,7 +136,7 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.PENDING);
 
         PaymentTransaction saved = repository.saveAndFlush(payment);
-
+        saveOutboxEvent(saved, "PAYMENT_REQUESTED");
         PaymentGatewayResult gatewayResult;
 
         try {
@@ -104,6 +160,15 @@ public class PaymentService {
         saved.setGatewayReference(gatewayResult.providerReference());
 
         PaymentTransaction completed = repository.saveAndFlush(saved);
+
+        if (completed.getStatus() == PaymentStatus.SUCCEEDED) {
+
+            saveOutboxEvent(completed, "PAYMENT_COMPLETED");
+
+        } else if (completed.getStatus() == PaymentStatus.FAILED) {
+
+            saveOutboxEvent(completed, "PAYMENT_FAILED");
+        }
 
         return toResponse(completed);
     }
@@ -157,15 +222,4 @@ public class PaymentService {
         }
     }
 
-    private PaymentResponse toResponse(PaymentTransaction payment) {
-
-        return new PaymentResponse(
-                payment.getId(),
-                payment.getOrderId(),
-                payment.getAmount(),
-                payment.getCurrency(),
-                payment.getStatus(),
-                payment.getCreatedAt()
-        );
-    }
 }

@@ -17,10 +17,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.jdbc.core.JdbcTemplate;
-
+import com.skating.platform.payment.repository.OutboxEventRepository;
+import tools.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.util.Optional;
+import com.skating.platform.payment.dto.PaymentEventPayload;
+import com.skating.platform.payment.entity.OutboxEvent;
+import org.mockito.ArgumentCaptor;
 
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -38,6 +43,20 @@ class PaymentServiceTest {
 
     @InjectMocks
     private PaymentService paymentService;
+
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private JsonMapper jsonMapper;
+
+
+    private void stubJsonSerialization() {
+
+        doReturn("{\"paymentId\":10}")
+                .when(jsonMapper)
+                .writeValueAsString(any(PaymentEventPayload.class));
+    }
 
     @Test
     void createPayment_shouldCreateSucceededPayment() {
@@ -68,6 +87,7 @@ class PaymentServiceTest {
                 "mock-payment-10"
         ));
 
+        stubJsonSerialization();
         PaymentResponse response = paymentService.createPayment(request);
 
         assertEquals(10L, response.id());
@@ -83,6 +103,22 @@ class PaymentServiceTest {
                 new BigDecimal("1500.00"),
                 "RUB"
         );
+
+        ArgumentCaptor<OutboxEvent> eventCaptor =
+                ArgumentCaptor.forClass(OutboxEvent.class);
+
+        verify(outboxEventRepository, times(2))
+                .save(eventCaptor.capture());
+
+        List<OutboxEvent> events = eventCaptor.getAllValues();
+
+        assertEquals("PAYMENT_REQUESTED", events.get(0).getEventType());
+        assertEquals("PAYMENT_COMPLETED", events.get(1).getEventType());
+
+        assertEquals("PAYMENT", events.get(0).getAggregateType());
+        assertEquals("10", events.get(0).getAggregateId());
+
+        assertNotNull(events.get(0).getPayload());
     }
 
     @Test
@@ -114,6 +150,7 @@ class PaymentServiceTest {
                 null
         ));
 
+        stubJsonSerialization();
         PaymentResponse response = paymentService.createPayment(request);
 
         assertEquals(11L, response.id());
@@ -127,6 +164,28 @@ class PaymentServiceTest {
                 new BigDecimal("1500.00"),
                 "RUB"
         );
+
+        ArgumentCaptor<OutboxEvent> eventCaptor =
+                ArgumentCaptor.forClass(OutboxEvent.class);
+
+        verify(outboxEventRepository, times(2))
+                .save(eventCaptor.capture());
+
+        List<OutboxEvent> events = eventCaptor.getAllValues();
+
+        assertEquals("PAYMENT_REQUESTED", events.get(0).getEventType());
+
+
+        assertEquals("PAYMENT", events.get(0).getAggregateType());
+        assertEquals("PAYMENT_FAILED", events.get(1).getEventType());
+
+        assertEquals("PAYMENT", events.get(0).getAggregateType());
+        assertEquals("11", events.get(0).getAggregateId());
+
+        assertNotNull(events.get(0).getPayload());
+        assertNotNull(events.get(1).getPayload());
+
+        assertNotNull(events.get(0).getPayload());
     }
 
     @Test
@@ -189,6 +248,7 @@ class PaymentServiceTest {
                 .saveAndFlush(any(PaymentTransaction.class));
 
         verifyNoInteractions(paymentGateway);
+        verifyNoInteractions(outboxEventRepository, jsonMapper);
     }
 
 
@@ -217,7 +277,7 @@ class PaymentServiceTest {
                 new BigDecimal("1500.00"),
                 "RUB"
         )).thenThrow(new IllegalStateException("Gateway timeout"));
-
+        stubJsonSerialization();
         PaymentResponse response = paymentService.createPayment(request);
 
         assertEquals(12L, response.id());
@@ -231,6 +291,21 @@ class PaymentServiceTest {
                 new BigDecimal("1500.00"),
                 "RUB"
         );
+
+
+        ArgumentCaptor<OutboxEvent> eventCaptor =
+                ArgumentCaptor.forClass(OutboxEvent.class);
+
+        verify(outboxEventRepository, times(1))
+                .save(eventCaptor.capture());
+
+        OutboxEvent event = eventCaptor.getValue();
+
+        assertEquals("PAYMENT_REQUESTED", event.getEventType());
+        assertEquals("PAYMENT", event.getAggregateType());
+        assertEquals("12", event.getAggregateId());
+
+        assertNotNull(event.getPayload());
     }
 
 
