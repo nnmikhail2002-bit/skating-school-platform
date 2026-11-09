@@ -32,7 +32,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import java.math.BigDecimal;
-
+import com.skating.platform.backend.repository.OutboxEventRepository;
+import tools.jackson.databind.json.JsonMapper;
+import org.junit.jupiter.api.BeforeEach;
+import java.util.UUID;
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
 
@@ -48,8 +51,24 @@ class BookingServiceTest {
     @Mock
     private AppUserRepository appUserRepository;
 
-    @InjectMocks
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+
     private BookingService bookingService;
+
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
+
+    @BeforeEach
+    void setUp() {
+        bookingService = new BookingService(
+                mapper,
+                trainingSessionRepository,
+                repository,
+                appUserRepository,
+                outboxEventRepository,
+                jsonMapper
+        );
+    }
 
 
     private Student student() {
@@ -140,6 +159,52 @@ class BookingServiceTest {
 
     // CREATE BOOKING //
 
+    @Test
+    void shouldReturnExistingPendingBookingWithoutCreatingAnotherPayment() {
+
+        String email = "student@test.com";
+
+        Student student = student();
+        AppUser user = studentUser(email, student);
+
+        Booking existing = new Booking();
+
+        existing.setId(100L);
+        existing.setStudent(student);
+        existing.setTrainingSession(scheduledSession());
+        existing.setStatus(BookingStatus.PENDING_PAYMENT);
+
+        UUID attemptId = UUID.randomUUID();
+        existing.setPaymentAttemptId(attemptId);
+
+
+        when(appUserRepository.findByEmail(email))
+                .thenReturn(Optional.of(user));
+
+        when(trainingSessionRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(existing.getTrainingSession()));
+
+        when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
+                .thenReturn(Optional.of(existing));
+
+        when(mapper.toResponse(existing))
+                .thenReturn(response(BookingStatus.PENDING_PAYMENT));
+
+
+        BookingResponse result = bookingService.createBooking(request(), email);
+
+
+        assertEquals(100L, result.getId());
+        assertEquals(BookingStatus.PENDING_PAYMENT, result.getStatus());
+
+        assertEquals(attemptId, existing.getPaymentAttemptId());
+
+        verify(repository, never()).saveAndFlush(any(Booking.class));
+
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+
+        verify(repository, never()).countByTrainingSession_IdAndStatusIn(any(), any());
+    }
 
     @Test
     void shouldCreateBookingSuccessfully() {
@@ -150,63 +215,100 @@ class BookingServiceTest {
         AppUser user = studentUser(email, student);
         TrainingSession session = scheduledSession();
 
-        CreateBookingRequest request = request();
-
-        BookingResponse response = response(BookingStatus.BOOKED);
-
-
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
         when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
 
-        when(repository
-                .findByStudent_IdAndTrainingSession_Id(1L, 10L))
+        when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
                 .thenReturn(Optional.empty());
 
-        when(repository
-                .countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED))
-                .thenReturn(1L);
+        when(repository.countByTrainingSession_IdAndStatusIn(
+                10L,
+                List.of(
+                        BookingStatus.BOOKED,
+                        BookingStatus.PENDING_PAYMENT
+                )
+        )).thenReturn(1L);
 
-        when(repository.save(any(Booking.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.saveAndFlush(any(Booking.class)))
+                .thenAnswer(invocation -> {
+                    Booking saved = invocation.getArgument(0);
+                    saved.setId(100L);
+                    return saved;
+                });
 
         when(mapper.toResponse(any(Booking.class)))
-                .thenReturn(response);
+                .thenReturn(response(BookingStatus.PENDING_PAYMENT));
 
 
-        BookingResponse result = bookingService.createBooking(request, email);
+        BookingResponse result =
+                bookingService.createBooking(request(), email);
 
 
-        ArgumentCaptor<Booking> captor = ArgumentCaptor.forClass(Booking.class);
+        ArgumentCaptor<Booking> bookingCaptor =
+                ArgumentCaptor.forClass(Booking.class);
 
-        verify(repository).save(captor.capture());
+        verify(repository).saveAndFlush(bookingCaptor.capture());
 
-        Booking savedBooking = captor.getValue();
+        Booking savedBooking = bookingCaptor.getValue();
 
 
         assertEquals(100L, result.getId());
-        assertEquals(BookingStatus.BOOKED, result.getStatus());
+        assertEquals(BookingStatus.PENDING_PAYMENT, result.getStatus());
 
         assertEquals(student, savedBooking.getStudent());
-
         assertEquals(session, savedBooking.getTrainingSession());
 
-        assertEquals(BookingStatus.BOOKED, savedBooking.getStatus());
+        assertEquals(
+                BookingStatus.PENDING_PAYMENT,
+                savedBooking.getStatus()
+        );
 
         assertNotNull(savedBooking.getBookedAt());
+        assertNotNull(savedBooking.getPaymentAttemptId());
 
-        verify(trainingSessionRepository).findByIdForUpdate(10L);
-
-        verify(repository).countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED);
         assertEquals(
                 new BigDecimal("2500.00"),
                 savedBooking.getAmount()
         );
 
         assertEquals("RUB", savedBooking.getCurrency());
+
+
+        verify(trainingSessionRepository).findByIdForUpdate(10L);
+
+        verify(repository).countByTrainingSession_IdAndStatusIn(
+                10L,
+                List.of(
+                        BookingStatus.BOOKED,
+                        BookingStatus.PENDING_PAYMENT
+                )
+        );
+
+
+        ArgumentCaptor<OutboxEvent> eventCaptor =
+                ArgumentCaptor.forClass(OutboxEvent.class);
+
+        verify(outboxEventRepository).save(eventCaptor.capture());
+
+        OutboxEvent event = eventCaptor.getValue();
+
+        assertEquals("BOOKING", event.getAggregateType());
+        assertEquals("100", event.getAggregateId());
+        assertEquals("PAYMENT_REQUESTED", event.getEventType());
+
+        assertNotNull(event.getPayload());
+
+        assertTrue(
+                event.getPayload().contains(
+                        savedBooking.getPaymentAttemptId().toString()
+                )
+        );
     }
+
+
 
 
     @Test
@@ -215,9 +317,7 @@ class BookingServiceTest {
         String email = "student@test.com";
 
         Student student = student();
-
         AppUser user = studentUser(email, student);
-
         TrainingSession session = scheduledSession();
 
         Booking existing = new Booking();
@@ -227,35 +327,41 @@ class BookingServiceTest {
         existing.setTrainingSession(session);
         existing.setStatus(BookingStatus.CANCELLED);
 
+        UUID previousAttemptId = UUID.randomUUID();
+        existing.setPaymentAttemptId(previousAttemptId);
+
+
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
         when(trainingSessionRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(session));
 
-        when(repository
-                .findByStudent_IdAndTrainingSession_Id(1L, 10L))
+        when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
                 .thenReturn(Optional.of(existing));
 
-        when(repository.countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED))
-                .thenReturn(0L);
+        when(repository.countByTrainingSession_IdAndStatusIn(
+                10L,
+                List.of(
+                        BookingStatus.BOOKED,
+                        BookingStatus.PENDING_PAYMENT
+                )
+        )).thenReturn(0L);
 
-        when(repository.save(any(Booking.class)))
+        when(repository.saveAndFlush(any(Booking.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         when(mapper.toResponse(any(Booking.class)))
-                .thenReturn(response(BookingStatus.BOOKED));
+                .thenReturn(response(BookingStatus.PENDING_PAYMENT));
 
 
         bookingService.createBooking(request(), email);
 
 
         ArgumentCaptor<Booking> captor =
-                ArgumentCaptor.forClass(
-                        Booking.class
-                );
+                ArgumentCaptor.forClass(Booking.class);
 
-        verify(repository).save(captor.capture());
+        verify(repository).saveAndFlush(captor.capture());
 
         Booking saved = captor.getValue();
 
@@ -263,11 +369,19 @@ class BookingServiceTest {
         assertSame(existing, saved);
 
         assertEquals(
-                BookingStatus.BOOKED,
+                BookingStatus.PENDING_PAYMENT,
                 saved.getStatus()
         );
 
         assertNotNull(saved.getBookedAt());
+        assertNotNull(saved.getPaymentAttemptId());
+
+        assertNotEquals(
+                previousAttemptId,
+                saved.getPaymentAttemptId()
+        );
+
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
     }
 
 
@@ -363,8 +477,7 @@ class BookingServiceTest {
 
         AppUser user = studentUser(email, student);
 
-        TrainingSession session =
-                scheduledSession();
+        TrainingSession session = scheduledSession();
 
 
         when(appUserRepository.findByEmail(email))
@@ -376,13 +489,13 @@ class BookingServiceTest {
         when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
                 .thenReturn(Optional.empty());
 
-        when(repository
-                .countByTrainingSession_IdAndStatus(10L, BookingStatus.BOOKED))
+        when(repository.countByTrainingSession_IdAndStatusIn(
+                10L,
+                List.of(BookingStatus.BOOKED, BookingStatus.PENDING_PAYMENT))
+        )
                 .thenReturn(2L);
 
-
-        ConflictException exception =
-                assertThrows(
+        ConflictException exception = assertThrows(
                         ConflictException.class,
                         () -> bookingService.createBooking(request(), email)
                 );
@@ -393,8 +506,7 @@ class BookingServiceTest {
                 exception.getMessage()
         );
 
-        verify(repository, never())
-                .save(any(Booking.class));
+        verify(repository, never()).saveAndFlush(any(Booking.class));
     }
 
 
@@ -848,12 +960,11 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(repository
-                .findByStudent_IdAndTrainingSession_Id(
-                        1L,
-                        10L
-                ))
+        when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
                 .thenReturn(Optional.of(booking));
+
+        when(trainingSessionRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(booking.getTrainingSession()));
 
         when(repository.save(booking))
                 .thenReturn(booking);
@@ -903,12 +1014,11 @@ class BookingServiceTest {
         when(appUserRepository.findByEmail(email))
                 .thenReturn(Optional.of(user));
 
-        when(repository
-                .findByStudent_IdAndTrainingSession_Id(
-                        1L,
-                        10L
-                ))
+        when(repository.findByStudent_IdAndTrainingSession_Id(1L, 10L))
                 .thenReturn(Optional.of(booking));
+
+        when(trainingSessionRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(booking.getTrainingSession()));
 
         when(mapper.toResponse(booking))
                 .thenReturn(response(BookingStatus.CANCELLED)

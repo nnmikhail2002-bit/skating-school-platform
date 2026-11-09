@@ -320,7 +320,7 @@ class AuthFlowIntegrationTest {
                                 .content(bookingJson)
                 )
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("BOOKED"))
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.studentId")
                         .value(studentId.intValue()))
                 .andExpect(jsonPath("$.trainingSessionId")
@@ -345,7 +345,7 @@ class AuthFlowIntegrationTest {
                 .andExpect(jsonPath("$.content[0].id")
                         .value(bookingId.intValue()))
                 .andExpect(jsonPath("$.content[0].status")
-                        .value("BOOKED"));
+                        .value("PENDING_PAYMENT"));
 
 
         mockMvc.perform(
@@ -449,7 +449,7 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.studentId")
                         .value(firstStudentId.intValue()))
-                .andExpect(jsonPath("$.status").value("BOOKED"));
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
 
         mockMvc.perform(
                         get("/api/bookings/me")

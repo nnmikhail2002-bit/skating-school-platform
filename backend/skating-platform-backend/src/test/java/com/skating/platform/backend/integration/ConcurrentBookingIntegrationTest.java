@@ -148,22 +148,25 @@ class ConcurrentBookingIntegrationTest {
                     }
                 }
 
-                long bookedCount = bookingRepository
-                        .countByTrainingSession_IdAndStatus(
+                long occupiedCount = bookingRepository
+                        .countByTrainingSession_IdAndStatusIn(
                                 session.getId(),
-                                BookingStatus.BOOKED
+                                List.of(
+                                        BookingStatus.BOOKED,
+                                        BookingStatus.PENDING_PAYMENT
+                                )
                         );
 
                 System.out.printf(
                         "Successful: %d, Conflicts: %d, Booked: %d%n",
                         successfulBookings,
                         conflicts,
-                        bookedCount
+                        occupiedCount
                 );
 
                 assertEquals(1, successfulBookings);
                 assertEquals(1, conflicts);
-                assertEquals(1L, bookedCount);
+                assertEquals(1L, occupiedCount);
             }
         } finally {
             executor.shutdownNow();
