@@ -136,7 +136,6 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.PENDING);
 
         PaymentTransaction saved = repository.saveAndFlush(payment);
-        saveOutboxEvent(saved, "PAYMENT_REQUESTED");
         PaymentGatewayResult gatewayResult;
 
         try {

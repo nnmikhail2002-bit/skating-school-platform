@@ -37,7 +37,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
+import org.apache.kafka.common.errors.TopicExistsException;
+import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(properties = {
@@ -113,9 +114,16 @@ class OutboxEventIntegrationTest {
                         kafka.getBootstrapServers()
                 )
         )) {
-            adminClient.createTopics(List.of(new NewTopic(TOPIC, 1, (short) 1)))
-                    .all()
-                    .get(10, TimeUnit.SECONDS);
+            try {
+                adminClient.createTopics(
+                        List.of(new NewTopic(TOPIC, 1, (short) 1))
+                ).all().get(10, TimeUnit.SECONDS);
+
+            } catch (ExecutionException exception) {
+                if (!(exception.getCause() instanceof TopicExistsException)) {
+                    throw exception;
+                }
+            }
         }
 
         Properties consumerProperties = new Properties();
