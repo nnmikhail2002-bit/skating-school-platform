@@ -17,7 +17,8 @@ import org.springframework.stereotype.Service;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
-
+import com.skating.platform.backend.dto.payment.PaymentResultEvent;
+import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 
+@Slf4j
 @Service
 public class BookingService {
 
@@ -50,6 +52,87 @@ public class BookingService {
         this.appUserRepository = appUserRepository;
         this.outboxEventRepository = outboxEventRepository;
         this.jsonMapper = jsonMapper;
+    }
+
+
+
+    @Transactional
+    public void processPaymentResult(PaymentResultEvent event) {
+
+        if (event.orderId() == null || event.idempotencyKey() == null || event.idempotencyKey().isBlank()) {
+            throw new IllegalArgumentException("Invalid payment event");
+        }
+
+        UUID paymentAttemptId = UUID.fromString(event.idempotencyKey());
+
+        Booking booking = repository.findByIdForUpdate(event.orderId())
+                .orElse(null);
+
+        if (booking == null) {
+
+            log.warn("Booking not found for payment. orderId={}, paymentId={}",
+                    event.orderId(),
+                    event.paymentId()
+            );
+
+            return;
+        }
+
+        if (!paymentAttemptId.equals(booking.getPaymentAttemptId())) {
+            log.warn("Ignoring stale payment event. bookingId={}, paymentId={}",
+                    booking.getId(),
+                    event.paymentId()
+            );
+            return;
+        }
+
+        if (event.amount() == null || booking.getAmount() == null || booking.getAmount().compareTo(event.amount()) != 0
+                || !booking.getCurrency().equals(event.currency())) {
+            throw new IllegalStateException("Payment event does not match booking");
+        }
+
+        if (event.status() == null) {
+            throw new IllegalArgumentException("Payment status is missing");
+        }
+
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+
+            if ("SUCCEEDED".equals(event.status())) {
+
+                log.error("Payment succeeded after booking cancellation. " + "Refund may be required. bookingId={}, paymentId={}",
+                        booking.getId(),
+                        event.paymentId()
+                );
+            }
+
+            return;
+        }
+
+        if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+
+            log.info("Ignoring duplicate payment result. bookingId={}, status={}",
+                    booking.getId(),
+                    booking.getStatus()
+            );
+
+            return;
+        }
+
+        switch (event.status()) {
+
+            case "SUCCEEDED" -> booking.setStatus(BookingStatus.BOOKED);
+
+            case "FAILED" -> booking.setStatus(BookingStatus.PAYMENT_FAILED);
+
+            default -> throw new IllegalArgumentException("Unsupported payment status: " + event.status());
+        }
+
+        repository.save(booking);
+
+        log.info("Booking payment processed. bookingId={}, status={}",
+                booking.getId(),
+                booking.getStatus()
+        );
     }
 
 

@@ -37,6 +37,7 @@ public class PaymentService {
     private final PaymentGateway paymentGateway;
     private final OutboxEventRepository outboxEventRepository;
     private final JsonMapper jsonMapper;
+    private final PaymentStatusUpdateService paymentStatusUpdateService;
 
     private void lockIdempotencyKey(String key) {
 
@@ -59,15 +60,20 @@ public class PaymentService {
             String eventType
     ) {
 
+
+
         PaymentEventPayload payload = new PaymentEventPayload(
                 payment.getId(),
                 payment.getOrderId(),
+                payment.getIdempotencyKey(),
                 payment.getAmount(),
                 payment.getCurrency(),
                 payment.getStatus(),
                 payment.getGatewayReference(),
                 payment.getCreatedAt()
         );
+
+
 
         String jsonPayload;
 
@@ -184,12 +190,12 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+
     public void reconcilePendingPayments() {
 
         List<PaymentTransaction> pendingPayments = repository.findByStatusAndGatewayReferenceIsNotNull(PaymentStatus.PENDING);
 
         for (PaymentTransaction payment : pendingPayments) {
-
             try {
                 PaymentStatus gatewayStatus = paymentGateway.checkPaymentStatus(payment.getGatewayReference());
 
@@ -197,28 +203,23 @@ public class PaymentService {
                     continue;
                 }
 
-                int updatedRows = repository.updateStatusIfCurrentStatus(
-                        payment.getId(),
-                        PaymentStatus.PENDING,
-                        gatewayStatus
-                );
+                boolean updated = paymentStatusUpdateService.updateStatusAndPublish(payment, gatewayStatus);
 
-                if (updatedRows == 1) {
-                    log.info(
-                            "Payment status updated. paymentId={}, status={}",
+                if (updated) {log.info("Payment reconciled and event created. paymentId={}, status={}",
                             payment.getId(),
                             gatewayStatus
                     );
                 }
 
             } catch (RuntimeException exception) {
-                log.error(
-                        "Failed to check payment status. paymentId={}",
+
+                log.error("Failed to reconcile payment. paymentId={}",
                         payment.getId(),
                         exception
                 );
             }
         }
     }
+
 
 }

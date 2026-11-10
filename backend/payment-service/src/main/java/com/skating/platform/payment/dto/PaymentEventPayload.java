@@ -1,3 +1,4 @@
+
 package com.skating.platform.payment.dto;
 
 import com.skating.platform.payment.entity.PaymentStatus;
@@ -8,6 +9,7 @@ import java.time.OffsetDateTime;
 public record PaymentEventPayload(
         Long paymentId,
         Long orderId,
+        String idempotencyKey,
         BigDecimal amount,
         String currency,
         PaymentStatus status,

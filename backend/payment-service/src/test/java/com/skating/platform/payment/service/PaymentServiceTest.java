@@ -50,6 +50,8 @@ class PaymentServiceTest {
     @Mock
     private JsonMapper jsonMapper;
 
+    @Mock
+    private PaymentStatusUpdateService paymentStatusUpdateService;
 
     private void stubJsonSerialization() {
 
@@ -117,6 +119,20 @@ class PaymentServiceTest {
         assertEquals("10", event.getAggregateId());
 
         assertNotNull(event.getPayload());
+        ArgumentCaptor<PaymentEventPayload> payloadCaptor =
+                ArgumentCaptor.forClass(PaymentEventPayload.class);
+
+        verify(jsonMapper).writeValueAsString(payloadCaptor.capture());
+
+        assertEquals(
+                "test-key-1",
+                payloadCaptor.getValue().idempotencyKey()
+        );
+
+        assertEquals(
+                1L,
+                payloadCaptor.getValue().orderId()
+        );
     }
 
     @Test
