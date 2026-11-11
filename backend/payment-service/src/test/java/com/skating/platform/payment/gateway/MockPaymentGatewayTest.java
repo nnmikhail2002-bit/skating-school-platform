@@ -1,3 +1,4 @@
+
 package com.skating.platform.payment.gateway;
 
 import com.skating.platform.payment.entity.PaymentStatus;
@@ -12,7 +13,8 @@ class MockPaymentGatewayTest {
     @Test
     void processPayment_shouldReturnPendingResult() {
 
-        PaymentGateway gateway = new MockPaymentGateway();
+        PaymentGateway gateway =
+                new MockPaymentGateway(PaymentStatus.SUCCEEDED);
 
         PaymentGatewayResult result = gateway.processPayment(
                 42L,
@@ -27,10 +29,24 @@ class MockPaymentGatewayTest {
     @Test
     void checkPaymentStatus_shouldReturnSucceeded() {
 
-        PaymentGateway gateway = new MockPaymentGateway();
+        PaymentGateway gateway =
+                new MockPaymentGateway(PaymentStatus.SUCCEEDED);
 
-        PaymentStatus status = gateway.checkPaymentStatus("mock-payment-42");
+        PaymentStatus status =
+                gateway.checkPaymentStatus("mock-payment-42");
 
         assertEquals(PaymentStatus.SUCCEEDED, status);
+    }
+
+    @Test
+    void checkPaymentStatus_shouldReturnFailed() {
+
+        PaymentGateway gateway =
+                new MockPaymentGateway(PaymentStatus.FAILED);
+
+        PaymentStatus status =
+                gateway.checkPaymentStatus("mock-payment-42");
+
+        assertEquals(PaymentStatus.FAILED, status);
     }
 }
