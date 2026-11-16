@@ -6,17 +6,23 @@ on:
     branches:
       - main
       - 'feature/**'
+
   pull_request:
     branches:
       - main
-      - feature/tests
+      - 'feature/**'
+
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  backend-tests:
+
+  main-backend-tests:
+    name: Main Backend - Build and Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     defaults:
       run:
@@ -24,9 +30,19 @@ jobs:
 
     env:
       JWT_SECRET: '0123456789abcdef0123456789abcdef'
-      POSTGRES_DB: 'ci_unused'
-      POSTGRES_USER: 'ci_unused'
-      POSTGRES_PASSWORD: 'ci_unused'
+
+      POSTGRES_DB: ci_unused
+      POSTGRES_USER: ci_unused
+      POSTGRES_PASSWORD: ci_unused
+
+      REDIS_PASSWORD: ci-redis-password
+
+      KAFKA_APP_USERNAME: ci-app
+      KAFKA_APP_PASSWORD: ci-app-password
+      KAFKA_SSL_STORE_PASSWORD: ci-store-password
+
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: 'false'
+      BOOKING_OUTBOX_ENABLED: 'false'
 
     steps:
       - name: Checkout repository
@@ -42,3 +58,80 @@ jobs:
 
       - name: Build and run tests
         run: bash ./mvnw -B clean verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-backend-test-reports
+          path: backend/skating-platform-backend/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload executable JAR
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-backend-jar
+          path: backend/skating-platform-backend/target/*.jar
+          if-no-files-found: error
+          retention-days: 14
+
+
+  payment-service-tests:
+    name: Payment Service - Build and Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: backend/payment-service
+
+    env:
+      PAYMENTS_POSTGRES_DB: ci_payments_unused
+      PAYMENTS_POSTGRES_USER: ci_payments_user
+      PAYMENTS_POSTGRES_PASSWORD: ci_payments_password
+
+      PAYMENT_MOCK_FINAL_STATUS: SUCCEEDED
+      PAYMENT_RECONCILIATION_ENABLED: 'false'
+      PAYMENT_OUTBOX_FIXED_DELAY: '3600000'
+
+      KAFKA_APP_USERNAME: ci-app
+      KAFKA_APP_PASSWORD: ci-app-password
+      KAFKA_SSL_STORE_PASSWORD: ci-store-password
+
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: 'false'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/payment-service/pom.xml
+
+      - name: Build and run tests
+        run: bash ./mvnw -B clean verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-service-test-reports
+          path: backend/payment-service/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload executable JAR
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: payment-service-jar
+          path: backend/payment-service/target/*.jar
+          if-no-files-found: error
+          retention-days: 14
+
