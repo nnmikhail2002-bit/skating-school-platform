@@ -10,10 +10,11 @@ import com.skating.platform.backend.mapper.TrainingSessionMapper;
 import com.skating.platform.backend.repository.*;
 import com.skating.platform.backend.service.SchoolServiceService;
 import com.skating.platform.backend.service.TrainingSessionService;
-
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -32,7 +33,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
-
+import org.springframework.aop.Advisor;
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.support.AopUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -46,8 +49,13 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @Testcontainers
-@SpringBootTest(properties = {"spring.kafka.listener.auto-startup=false", "booking.outbox.enabled=false"})
+@SpringBootTest(properties = {
+        "spring.kafka.listener.auto-startup=false",
+        "booking.outbox.enabled=false",
+        "logging.level.org.springframework.cache.interceptor=TRACE"
+})
 @ActiveProfiles("test")
 class RedisCacheIntegrationTest {
 
@@ -176,6 +184,37 @@ class RedisCacheIntegrationTest {
         // Первый запрос: Cache Miss
         var firstService = schoolServiceService.getServiceById(service.getId());
 
+        System.out.println("========== REDIS DEBUG ==========");
+
+        System.out.println(
+                "CacheManager: " + cacheManager.getClass().getName()
+        );
+
+        System.out.println(
+                "Cache: " + serviceCache.getClass().getName()
+        );
+
+        System.out.println(
+                "Service is AOP proxy: " + AopUtils.isAopProxy(schoolServiceService)
+        );
+
+        System.out.println(
+                "Redis keys: " + redisTemplate.keys("*")
+        );
+
+        if (schoolServiceService instanceof Advised advised) {
+            for (Advisor advisor : advised.getAdvisors()) {
+                System.out.println(
+                        "Advisor: " + advisor.getAdvice().getClass().getName()
+                );
+            }
+        }
+
+        System.out.println("=================================");
+        assertNotNull(
+                serviceCache.get("id:" + service.getId()),
+                "School service was not cached after first request"
+        );
         // Второй запрос: Cache Hit
         var secondService = schoolServiceService.getServiceById(service.getId());
 
@@ -301,7 +340,14 @@ class RedisCacheIntegrationTest {
 
         clearInvocations(trainingSessionMapper);
 
+        Cache scheduleCache = cacheManager.getCache("trainingSchedule");
+
         TrainingSessionResponse first = trainingSessionService.getTrainingSessionById(session.getId());
+
+        assertNotNull(
+                scheduleCache.get("id:" + session.getId()),
+                "Training session was not cached after first request"
+        );
 
         TrainingSessionResponse second = trainingSessionService.getTrainingSessionById(session.getId());
 

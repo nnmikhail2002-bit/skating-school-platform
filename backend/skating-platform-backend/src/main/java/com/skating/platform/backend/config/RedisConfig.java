@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Page;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
@@ -61,7 +62,13 @@ public class RedisConfig {
                                         .fromSerializer(valueSerializer)
                         );
 
-        return RedisCacheManager.builder(connectionFactory)
+        // Создаём RedisCacheWriter с синхронными операциями
+        RedisCacheWriter cacheWriter = RedisCacheWriter.create(
+                connectionFactory,
+                configurer -> configurer.immediateWrites()
+        );
+
+        return RedisCacheManager.builder(cacheWriter)
                 .cacheDefaults(
                         defaultConfig.entryTtl(Duration.ofMinutes(5))
                 )
@@ -110,4 +117,3 @@ public class RedisConfig {
         }
     }
 }
-
