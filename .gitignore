@@ -14,3 +14,4 @@ logs/
 # Node
 node_modules/
 dist/
+kafka/secrets/

@@ -16,7 +16,9 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 @Service
 public class SchoolServiceService {
     private final SchoolServiceRepository repository;
@@ -27,16 +29,30 @@ public class SchoolServiceService {
         this.mapper = mapper;
     }
 
-    public Page<SchoolServiceResponse> getAllServices(Pageable pageable){
+
+
+    @Cacheable(
+            cacheNames = "schoolServices",
+            key = "'page:' + #p0.pageNumber + ':' + #p0.pageSize + ':' + #p0.sort.toString()"
+    )
+    public Page<SchoolServiceResponse> getAllServices(Pageable pageable) {
         return repository.findAll(pageable)
-                .map(mapper::toResponse); // (mapper -> mapper.toResponse(service))
+                .map(mapper::toResponse);
     }
 
-    public SchoolServiceResponse getServiceById(Long id){
+    @Cacheable(
+            cacheNames = "schoolServices",
+            key = "'id:' + #p0"
+    )
+    public SchoolServiceResponse getServiceById(Long id) {
         SchoolService service = getEntityById(id);
         return mapper.toResponse(service);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "schoolServices", allEntries = true),
+            @CacheEvict(cacheNames = "trainingSchedule", allEntries = true)
+    })
     @Transactional
     public SchoolServiceResponse createService(CreateSchoolServiceRequest request){
         SchoolService service = mapper.toEntity(request);
@@ -51,6 +67,10 @@ public class SchoolServiceService {
                 );
     }
 
+    @CacheEvict(
+            cacheNames = {"schoolServices", "trainingSchedule"},
+            allEntries = true
+    )
     @Transactional
     public SchoolServiceResponse updateService(Long id, UpdateSchoolServiceRequest updatedService){
         SchoolService existing = getEntityById(id);
@@ -63,6 +83,10 @@ public class SchoolServiceService {
         return mapper.toResponse(saved);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "schoolServices", allEntries = true),
+            @CacheEvict(cacheNames = "trainingSchedule", allEntries = true)
+    })
     @Transactional
     public void deleteService(Long id){
         SchoolService service = getEntityById(id);

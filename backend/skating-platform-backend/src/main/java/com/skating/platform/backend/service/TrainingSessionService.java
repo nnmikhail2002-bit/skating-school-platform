@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 
 @Service
 public class TrainingSessionService {
@@ -27,7 +29,8 @@ public class TrainingSessionService {
     private final TrainingSessionMapper mapper;
     private final AppUserRepository appUserRepository;
 
-    public TrainingSessionService(TrainingSessionMapper mapper, TrainingSessionRepository repository, TrainerRepository trainerRepository,
+    public TrainingSessionService(TrainingSessionMapper mapper, TrainingSessionRepository repository,
+                                  TrainerRepository trainerRepository,
                                   SchoolServiceRepository serviceRepository, AppUserRepository appUserRepository) {
         this.mapper = mapper;
         this.repository = repository;
@@ -104,6 +107,10 @@ public class TrainingSessionService {
                 .map(mapper::toResponse);
     }
 
+    @CacheEvict(
+            cacheNames = "trainingSchedule",
+            allEntries = true
+    )
     @Transactional
     public TrainingSessionResponse createTrainingSession(CreateTrainingSessionRequest request) {
         TrainingSession session = new TrainingSession();
@@ -139,17 +146,31 @@ public class TrainingSessionService {
                         new ResourceNotFoundException("Training Session not found")
                 );
     }
+
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "trainingSchedule",
+            key = "'id:' + #p0"
+    )
     public TrainingSessionResponse getTrainingSessionById(Long id) {
         TrainingSession trainingSession = getEntityById(id);
         return mapper.toResponse(trainingSession);
     }
+
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "trainingSchedule",
+            key = "'page:' + #p0.pageNumber + ':' + #p0.pageSize + ':' + #p0.sort.toString()"
+    )
     public Page<TrainingSessionResponse> getAllTrainingSessions(Pageable pageable) {
         return repository.findAll(pageable)
                 .map(mapper::toResponse);
     }
 
+    @CacheEvict(
+            cacheNames = "trainingSchedule",
+            allEntries = true
+    )
     @Transactional
     public TrainingSessionResponse updateTrainingSession(Long id, UpdateTrainingSessionRequest request) {
         TrainingSession existing = getEntityById(id);
@@ -180,6 +201,11 @@ public class TrainingSessionService {
         return mapper.toResponse(saved);
     }
 
+    @CacheEvict(
+            cacheNames = "trainingSchedule",
+            allEntries = true,
+            beforeInvocation = true
+    )
     @Transactional
     public void deleteTrainingSession(Long id) {
         TrainingSession trainingSession = getEntityById(id);

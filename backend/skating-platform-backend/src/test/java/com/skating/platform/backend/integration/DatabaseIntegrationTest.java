@@ -23,7 +23,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -49,6 +59,12 @@ class DatabaseIntegrationTest {
                     .withUsername("test_user")
                     .withPassword("test_password");
 
+
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Autowired
     private DataSource dataSource;
@@ -83,10 +99,11 @@ class DatabaseIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Test
-    void shouldApplyLiquibaseMigrations() throws Exception {
 
-        String sql = """
+    @Test
+    void shouldApplyLiquibaseMigrations() {
+
+        String tablesSql = """
                 SELECT COUNT(*)
                 FROM information_schema.tables
                 WHERE table_schema = 'public'
@@ -97,18 +114,34 @@ class DatabaseIntegrationTest {
                       'school_services',
                       'training_sessions',
                       'bookings',
-                      'trainers_services'
+                      'trainers_services',
+                      'outbox_events'
                   )
                 """;
 
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery(sql)) {
+        Long tableCount = jdbcTemplate.queryForObject(
+                tablesSql,
+                Long.class
+        );
 
-            assertTrue(result.next());
+        String columnsSql = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'bookings'
+                  AND column_name IN (
+                      'amount',
+                      'currency',
+                      'payment_attempt_id'
+                  )
+                """;
 
-            assertEquals(7L, result.getLong(1));
-        }
+        Long paymentColumnsCount = jdbcTemplate.queryForObject(
+                columnsSql,
+                Long.class
+        );
+
+        assertEquals(8L, tableCount);
     }
 
 
@@ -282,12 +315,11 @@ class DatabaseIntegrationTest {
         assertEquals(result.getId(), savedBooking.getId());
         assertEquals(student.getId(), savedBooking.getStudent().getId());
         assertEquals(session.getId(), savedBooking.getTrainingSession().getId());
-        assertEquals(BookingStatus.BOOKED, savedBooking.getStatus());
-        assertNotNull(savedBooking.getBookedAt());
-
+        assertEquals(BookingStatus.PENDING_PAYMENT, savedBooking.getStatus());
+        assertNotNull(savedBooking.getPaymentAttemptId());
         assertNotNull(result.getId());
         assertEquals(session.getId(), result.getTrainingSessionId());
-        assertEquals(BookingStatus.BOOKED, result.getStatus());
+        assertEquals(BookingStatus.PENDING_PAYMENT, result.getStatus());
 
         Page<Booking> studentBookings = bookingRepository.findByStudent_Id(student.getId(), PageRequest.of(0, 10));
         assertEquals(1, studentBookings.getTotalElements());
@@ -302,17 +334,46 @@ class DatabaseIntegrationTest {
         assertNotNull(result.getBookedAt());
 
 
-        ConflictException exception = assertThrows(ConflictException.class,
-                () -> bookingService.createBooking(request, "student.integration@test.com"));
+        BookingResponse repeated =
+                bookingService.createBooking(
+                        request,
+                        "student.integration@test.com"
+                );
+
+        assertEquals(result.getId(), repeated.getId());
 
         assertEquals(
-                "Student is already booked for this training session",
-                exception.getMessage()
+                BookingStatus.PENDING_PAYMENT,
+                repeated.getStatus()
         );
 
-        long bookedCount = bookingRepository.countByTrainingSession_IdAndStatus(session.getId(), BookingStatus.BOOKED);
+        long paymentEvents = outboxEventRepository.findAll()
+                .stream()
+                .filter(event ->
+                        event.getAggregateId().equals(result.getId().toString())
+                )
+                .filter(event ->
+                        event.getEventType().equals("PAYMENT_REQUESTED")
+                )
+                .count();
 
-        assertEquals(1L, bookedCount);
+        assertEquals(1L, paymentEvents);
+
+        long occupiedCount = bookingRepository.countByTrainingSession_IdAndStatusIn(
+                session.getId(),
+                        List.of(
+                                BookingStatus.BOOKED,
+                                BookingStatus.PENDING_PAYMENT
+                        )
+                );
+
+        assertEquals(1L, occupiedCount);
+        assertEquals(
+                new BigDecimal("2500.00"),
+                savedBooking.getAmount()
+        );
+
+        assertEquals("RUB", savedBooking.getCurrency());
 
     }
 
@@ -393,10 +454,18 @@ class DatabaseIntegrationTest {
 
         assertEquals("Training session is full", exception.getMessage());
 
-        assertEquals(1L, bookingRepository.countByTrainingSession_IdAndStatus(session.getId(), BookingStatus.BOOKED));
+        assertEquals(1L, bookingRepository.countByTrainingSession_IdAndStatusIn(
+                        session.getId(),
+                        List.of(
+                                BookingStatus.BOOKED,
+                                BookingStatus.PENDING_PAYMENT
+                        )
+                )
+        );
 
         assertTrue(bookingRepository.findByStudent_IdAndTrainingSession_Id(secondStudent.getId(), session.getId()).isEmpty());
     }
+
 
 
     @Test
@@ -405,39 +474,75 @@ class DatabaseIntegrationTest {
 
         String email = "student@test.com";
 
-        Student student =
-                createStudentAccount(email, "+79991111111");
+        Student student = createStudentAccount(email, "+79991111111");
 
         TrainingSession session = createScheduledSession(1);
 
         CreateBookingRequest request = new CreateBookingRequest();
         request.setTrainingSessionId(session.getId());
 
-        BookingResponse original =
-                bookingService.createBooking(request, email);
 
-        BookingResponse cancelled =
-                bookingService.cancelBooking(request, email);
+        BookingResponse original = bookingService.createBooking(request, email);
+
+
+        Booking initialBooking = bookingRepository.findByStudent_IdAndTrainingSession_Id(student.getId(), session.getId())
+                .orElseThrow();
+
+        UUID previousAttemptId = initialBooking.getPaymentAttemptId();
+
+        assertNotNull(previousAttemptId);
+
+        BookingResponse cancelled = bookingService.cancelBooking(request, email);
 
         assertEquals(BookingStatus.CANCELLED, cancelled.getStatus());
         assertEquals(original.getId(), cancelled.getId());
 
-        assertEquals(0L, bookingRepository.countByTrainingSession_IdAndStatus(session.getId(), BookingStatus.BOOKED));
+
+        assertEquals(0L, bookingRepository.countByTrainingSession_IdAndStatusIn(
+                        session.getId(),
+                        List.of(
+                                BookingStatus.BOOKED,
+                                BookingStatus.PENDING_PAYMENT
+                        )
+                )
+        );
+
 
         BookingResponse rebooked = bookingService.createBooking(request, email);
 
-        assertEquals(BookingStatus.BOOKED, rebooked.getStatus());
+        assertEquals(BookingStatus.PENDING_PAYMENT, rebooked.getStatus());
 
-        assertEquals(original.getId(), rebooked.getId());
+        Booking restored = bookingRepository.findByStudent_IdAndTrainingSession_Id(student.getId(), session.getId())
+                .orElseThrow();
+
+        assertEquals(original.getId(), restored.getId());
+
+        assertNotEquals(previousAttemptId, restored.getPaymentAttemptId());
+
+        assertNotNull(restored.getPaymentAttemptId());
+
+
+        long paymentEvents = outboxEventRepository.findAll()
+                .stream()
+                .filter(event -> event.getAggregateId().equals(original.getId().toString()))
+                .filter(event -> event.getEventType().equals("PAYMENT_REQUESTED"))
+                .count();
+
+        assertEquals(2L, paymentEvents);
 
         entityManager.flush();
         entityManager.clear();
 
-        Optional<Booking> saved = bookingRepository.findByStudent_IdAndTrainingSession_Id(student.getId(), session.getId());
+        Optional<Booking> saved = bookingRepository.findByStudent_IdAndTrainingSession_Id(
+                        student.getId(),
+                        session.getId()
+                );
 
         assertTrue(saved.isPresent());
+
         assertEquals(original.getId(), saved.get().getId());
-        assertEquals(BookingStatus.BOOKED, saved.get().getStatus());
+
+        assertEquals(BookingStatus.PENDING_PAYMENT, saved.get().getStatus());
     }
 
 
@@ -448,9 +553,9 @@ class DatabaseIntegrationTest {
 
         jdbcTemplate.update(
                 """
-                INSERT INTO users (email, password, role, active)
-                VALUES (?, ?, ?, ?)
-                """,
+                        INSERT INTO users (email, password, role, active)
+                        VALUES (?, ?, ?, ?)
+                        """,
                 "duplicate@test.com",
                 "test-hash",
                 "STUDENT",
@@ -461,9 +566,9 @@ class DatabaseIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update(
                         """
-                        INSERT INTO users (email, password, role, active)
-                        VALUES (?, ?, ?, ?)
-                        """,
+                                INSERT INTO users (email, password, role, active)
+                                VALUES (?, ?, ?, ?)
+                                """,
                         "duplicate@test.com",
                         "another-hash",
                         "STUDENT",
@@ -479,10 +584,10 @@ class DatabaseIntegrationTest {
 
         jdbcTemplate.update(
                 """
-                INSERT INTO students
-                    (first_name, last_name, phone, email, active)
-                VALUES (?, ?, ?, ?, ?)
-                """,
+                        INSERT INTO students
+                            (first_name, last_name, phone, email, active)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
                 "Mikhail",
                 "Ivanov",
                 "+79990001111",
@@ -494,10 +599,10 @@ class DatabaseIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update(
                         """
-                        INSERT INTO students
-                            (first_name, last_name, phone, email, active)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
+                                INSERT INTO students
+                                    (first_name, last_name, phone, email, active)
+                                VALUES (?, ?, ?, ?, ?)
+                                """,
                         "Petr",
                         "Sidorov",
                         "+79990001111",
@@ -530,16 +635,129 @@ class DatabaseIntegrationTest {
                 DataIntegrityViolationException.class,
                 () -> jdbcTemplate.update(
                         """
-                        INSERT INTO bookings
-                            (student_id, training_session_id, booked_at, status)
-                        VALUES (?, ?, ?, ?)
-                        """,
+                                    INSERT INTO bookings
+                                                            (student_id, training_session_id, booked_at, status, amount, currency)
+                                                        VALUES (?, ?, ?, ?, ?, ?)
+                                """,
                         student.getId(),
                         session.getId(),
                         LocalDateTime.now(),
-                        "BOOKED"
+                        "BOOKED",
+                        new BigDecimal("2500.00"),
+                        "RUB"
                 )
         );
+    }
+
+    private OutboxEvent createPendingOutboxEvent(
+            String aggregateId,
+            OffsetDateTime createdAt,
+            OffsetDateTime nextAttemptAt
+    ) {
+
+        OutboxEvent event = new OutboxEvent();
+
+        event.setAggregateType("BOOKING");
+        event.setAggregateId(aggregateId);
+        event.setEventType("PAYMENT_REQUESTED");
+        event.setPayload("{}");
+
+        event.setCreatedAt(createdAt);
+        event.setNextAttemptAt(nextAttemptAt);
+
+        return event;
+    }
+
+
+    @Test
+    void findPendingEventsForUpdate_shouldSkipRowsLockedByAnotherTransaction() throws Exception {
+
+        outboxEventRepository.deleteAll();
+
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+        OutboxEvent firstEvent = createPendingOutboxEvent(
+                "booking-1",
+                now.minusMinutes(2),
+                now.minusSeconds(1)
+        );
+
+        OutboxEvent secondEvent = createPendingOutboxEvent(
+                "booking-2",
+                now.minusMinutes(1),
+                now.minusSeconds(1)
+        );
+
+        firstEvent = outboxEventRepository.saveAndFlush(firstEvent);
+        secondEvent = outboxEventRepository.saveAndFlush(secondEvent);
+
+        UUID firstEventId = firstEvent.getId();
+
+        CountDownLatch firstTransactionLocked = new CountDownLatch(1);
+        CountDownLatch releaseFirstTransaction = new CountDownLatch(1);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+        try {
+            Future<UUID> firstWorker = executor.submit(() ->
+                    transactionTemplate.execute(status -> {
+                        List<OutboxEvent> events = outboxEventRepository.findPendingEventsForUpdate(now, 1);
+
+                        assertEquals(1, events.size());
+
+                        UUID selectedId = events.get(0).getId();
+
+                        assertEquals(firstEventId, selectedId);
+
+                        firstTransactionLocked.countDown();
+
+                        try {
+                            assertTrue(releaseFirstTransaction.await(10, TimeUnit.SECONDS));
+                        } catch (InterruptedException exception) {
+
+                            Thread.currentThread().interrupt();
+
+                            throw new IllegalStateException(exception);
+                        }
+
+                        return selectedId;
+                    })
+            );
+
+            assertTrue(
+                    firstTransactionLocked.await(5, TimeUnit.SECONDS),
+                    "First transaction did not acquire the lock"
+            );
+
+            Future<UUID> secondWorker = executor.submit(() ->
+                    transactionTemplate.execute(status -> {
+
+                        List<OutboxEvent> events = outboxEventRepository.findPendingEventsForUpdate(now, 1);
+
+                        assertEquals(1, events.size());
+
+                        return events.get(0).getId();
+                    })
+            );
+
+            UUID secondSelectedId = secondWorker.get(5, TimeUnit.SECONDS);
+
+            assertNotEquals(firstEventId, secondSelectedId);
+
+            releaseFirstTransaction.countDown();
+
+            UUID firstSelectedId = firstWorker.get(10, TimeUnit.SECONDS);
+
+            assertEquals(firstEventId, firstSelectedId);
+
+            assertEquals(secondEvent.getId(), secondSelectedId);
+
+        } finally {
+            releaseFirstTransaction.countDown();
+            executor.shutdownNow();
+        }
     }
 
 }
